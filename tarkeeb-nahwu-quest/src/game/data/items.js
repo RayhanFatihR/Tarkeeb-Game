@@ -1,32 +1,94 @@
 const items = {
+  // ==================================================
+  // WEAPON
+  // ==================================================
+
   swordOfIsim: {
     id: "swordOfIsim",
+
     name: "Sword of Isim",
+
     type: "Weapon",
+
     rarity: "Common",
-    xpBonus: 0.10,
-    description: "Menambah 10% XP dari soal Isim.",
+
+    effectType: "isimXp",
+
+    effectValue: 0.10,
+
+    description:
+      "+10% XP dari soal Isim.",
+
     icon: "🗡️",
   },
 
+  // ==================================================
+  // ARMOR
+  // ==================================================
+
   shieldOfMubtada: {
     id: "shieldOfMubtada",
+
     name: "Shield of Mubtada",
+
     type: "Armor",
+
     rarity: "Rare",
-    xpBonus: 0.20,
-    description: "Menambah 20% XP dari tantangan Nahwu.",
+
+    effectType: "defense",
+
+    effectValue: 20,
+
+    description:
+      "+20 Defense saat Battle.",
+
     icon: "🛡️",
   },
 
+  // ==================================================
+  // ACCESSORY
+  // ==================================================
+
   ringOfRafa: {
     id: "ringOfRafa",
+
     name: "Ring of Rafa'",
+
     type: "Accessory",
+
     rarity: "Epic",
-    xpBonus: 0.30,
-    description: "Menambah 30% XP Nahwu.",
+
+    effectType: "nahwuXp",
+
+    effectValue: 0.15,
+
+    description:
+      "+15% XP dari semua soal Nahwu.",
+
     icon: "💍",
+  },
+
+  // ==================================================
+  // CONTOH LEGENDARY
+  // ==================================================
+
+  crownOfNahwu: {
+    id: "crownOfNahwu",
+
+    name: "Crown of Nahwu",
+
+    type: "Accessory",
+
+    rarity: "Legendary",
+
+    effectType: "allXp",
+
+    effectValue: 0.25,
+
+    description:
+      "+25% XP dari semua tantangan.",
+
+    icon: "👑",
   },
 };
 

@@ -26,6 +26,7 @@ class VillageScene extends Phaser.Scene {
         xp: 0,
         gold: 0,
         inventory: [],
+
         equipped: {
           Weapon: null,
           Armor: null,
@@ -34,7 +35,7 @@ class VillageScene extends Phaser.Scene {
       };
     }
 
-    // Pastikan data lama tetap aman
+    // Pastikan data selalu valid
     savedData.level = Number(savedData.level) || 1;
     savedData.xp = Number(savedData.xp) || 0;
     savedData.gold = Number(savedData.gold) || 0;
@@ -65,8 +66,10 @@ class VillageScene extends Phaser.Scene {
 
     this.playerData = savedData;
 
-    // Simpan data yang sudah dinormalisasi
-    this.registry.set("playerData", this.playerData);
+    this.registry.set(
+      "playerData",
+      this.playerData
+    );
 
     // ==================================================
     // XP CONFIG
@@ -86,9 +89,91 @@ class VillageScene extends Phaser.Scene {
     this.pendingQuestCompletion = false;
 
     // ==================================================
-    // BACKGROUND
+    // STATE
     // ==================================================
 
+    this.isQuizOpen = false;
+    this.answerLocked = false;
+
+    this.quizObjects = [];
+
+    this.currentQuestion = null;
+    this.currentChest = null;
+
+    this.inventoryOpen = false;
+    this.inventoryObjects = [];
+
+    this.npcDialogOpen = false;
+    this.npcDialogObjects = [];
+
+    this.questCompleteOpen = false;
+    this.questCompleteObjects = [];
+
+    // ==================================================
+    // CREATE WORLD
+    // ==================================================
+
+    this.createWorld();
+
+    // ==================================================
+    // CREATE PLAYER
+    // ==================================================
+
+    this.createPlayer();
+
+    // ==================================================
+    // CREATE NPC
+    // ==================================================
+
+    this.grammarMaster = new NPC(
+      this,
+      250,
+      420,
+      "Grammar Master"
+    );
+
+    // ==================================================
+    // INPUT
+    // ==================================================
+
+    this.input.topOnly = true;
+
+    // ==================================================
+    // HUD
+    // ==================================================
+
+    this.createHUD();
+
+    // ==================================================
+    // COLLISION
+    // ==================================================
+
+    this.physics.add.collider(
+      this.player,
+      this.obstacles
+    );
+
+    // ==================================================
+    // UPDATE HUD
+    // ==================================================
+
+    this.updateHUD();
+
+    // ==================================================
+    // QUEST HUD
+    // ==================================================
+
+    if (this.activeQuest) {
+      this.showQuestHUD();
+    }
+  }
+
+  // ==================================================
+  // CREATE WORLD
+  // ==================================================
+
+  createWorld() {
+    // Background
     this.add.rectangle(
       400,
       300,
@@ -97,10 +182,7 @@ class VillageScene extends Phaser.Scene {
       0x7cb342
     );
 
-    // ==================================================
-    // ROAD
-    // ==================================================
-
+    // Jalan vertikal
     this.add.rectangle(
       400,
       300,
@@ -109,6 +191,7 @@ class VillageScene extends Phaser.Scene {
       0xd8c39b
     );
 
+    // Jalan horizontal
     this.add.rectangle(
       400,
       300,
@@ -117,17 +200,11 @@ class VillageScene extends Phaser.Scene {
       0xd8c39b
     );
 
-    // ==================================================
-    // OBSTACLE GROUP
-    // ==================================================
-
+    // Obstacle
     this.obstacles =
       this.physics.add.staticGroup();
 
-    // ==================================================
-    // TITLE
-    // ==================================================
-
+    // Title
     this.add
       .text(
         400,
@@ -141,10 +218,7 @@ class VillageScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    // ==================================================
-    // HOUSES
-    // ==================================================
-
+    // Houses
     this.createHouse(
       180,
       230,
@@ -157,10 +231,7 @@ class VillageScene extends Phaser.Scene {
       "Grammar House"
     );
 
-    // ==================================================
-    // TREES
-    // ==================================================
-
+    // Trees
     this.createTree(80, 100);
     this.createTree(720, 100);
 
@@ -193,23 +264,13 @@ class VillageScene extends Phaser.Scene {
       350,
       items.ringOfRafa
     );
+  }
 
-    // ==================================================
-    // NPC
-    // ==================================================
+  // ==================================================
+  // CREATE PLAYER
+  // ==================================================
 
-    this.grammarMaster =
-      new NPC(
-        this,
-        250,
-        420,
-        "Grammar Master"
-      );
-
-    // ==================================================
-    // PLAYER
-    // ==================================================
-
+  createPlayer() {
     this.player =
       this.add.circle(
         400,
@@ -228,10 +289,7 @@ class VillageScene extends Phaser.Scene {
 
     this.playerSpeed = 200;
 
-    // ==================================================
-    // KEYBOARD
-    // ==================================================
-
+    // Keyboard
     this.keys =
       this.input.keyboard.addKeys({
         up: "W",
@@ -243,22 +301,19 @@ class VillageScene extends Phaser.Scene {
     this.cursors =
       this.input.keyboard.createCursorKeys();
 
-    // E
+    // Tombol E
     this.interactKey =
       this.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.E
       );
 
-    // I
+    // Tombol I
     this.inventoryKey =
       this.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.I
       );
 
-    // ==================================================
-    // PLAYER LABEL
-    // ==================================================
-
+    // Label player
     this.playerLabel =
       this.add
         .text(
@@ -273,10 +328,7 @@ class VillageScene extends Phaser.Scene {
         )
         .setOrigin(0.5);
 
-    // ==================================================
-    // INTERACTION TEXT
-    // ==================================================
-
+    // Teks interaksi
     this.interactText =
       this.add
         .text(
@@ -300,74 +352,6 @@ class VillageScene extends Phaser.Scene {
     this.interactText.setVisible(
       false
     );
-
-    // ==================================================
-    // QUIZ
-    // ==================================================
-
-    this.isQuizOpen = false;
-    this.answerLocked = false;
-
-    this.quizObjects = [];
-
-    this.currentQuestion = null;
-    this.currentChest = null;
-
-    // ==================================================
-    // INVENTORY
-    // ==================================================
-
-    this.inventoryOpen = false;
-    this.inventoryObjects = [];
-
-    // ==================================================
-    // NPC DIALOG
-    // ==================================================
-
-    this.npcDialogOpen = false;
-    this.npcDialogObjects = [];
-
-    // ==================================================
-    // QUEST COMPLETE
-    // ==================================================
-
-    this.questCompleteOpen = false;
-    this.questCompleteObjects = [];
-
-    // ==================================================
-    // INPUT
-    // ==================================================
-
-    this.input.topOnly = true;
-
-    // ==================================================
-    // HUD
-    // ==================================================
-
-    this.createHUD();
-
-    // ==================================================
-    // COLLISION
-    // ==================================================
-
-    this.physics.add.collider(
-      this.player,
-      this.obstacles
-    );
-
-    // ==================================================
-    // HUD UPDATE
-    // ==================================================
-
-    this.updateHUD();
-
-    // ==================================================
-    // QUEST HUD
-    // ==================================================
-
-    if (this.activeQuest) {
-      this.showQuestHUD();
-    }
   }
 
   // ==================================================
@@ -380,7 +364,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // INVENTORY
+    // INVENTORY KEY
     // ==================================================
 
     if (
@@ -400,7 +384,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // STOP PLAYER
+    // STOP GAMEPLAY
     // ==================================================
 
     if (
@@ -435,7 +419,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // MOVE LEFT
+    // MOVEMENT
     // ==================================================
 
     if (
@@ -447,10 +431,6 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    // ==================================================
-    // MOVE RIGHT
-    // ==================================================
-
     if (
       this.keys.right.isDown ||
       this.cursors.right.isDown
@@ -460,10 +440,6 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    // ==================================================
-    // MOVE UP
-    // ==================================================
-
     if (
       this.keys.up.isDown ||
       this.cursors.up.isDown
@@ -472,10 +448,6 @@ class VillageScene extends Phaser.Scene {
         -this.playerSpeed
       );
     }
-
-    // ==================================================
-    // MOVE DOWN
-    // ==================================================
 
     if (
       this.keys.down.isDown ||
@@ -491,8 +463,7 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
 
     if (
-      this.player.body.velocity.length() >
-      0
+      this.player.body.velocity.length() > 0
     ) {
       this.player.body.velocity
         .normalize()
@@ -525,7 +496,8 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
 
     let nearestChest = null;
-    let nearestDistance = Infinity;
+    let nearestDistance =
+      Infinity;
 
     this.chests.forEach(
       (chest) => {
@@ -589,8 +561,10 @@ class VillageScene extends Phaser.Scene {
 
     if (
       this.grammarMaster &&
-      (!nearestChest ||
-        nearestDistance >= 80)
+      (
+        !nearestChest ||
+        nearestDistance >= 80
+      )
     ) {
       if (
         this.grammarMaster.isNearby &&
@@ -646,7 +620,7 @@ class VillageScene extends Phaser.Scene {
         }
       );
 
-    // XP BACKGROUND
+    // XP BAR BACKGROUND
     this.xpBarBackground =
       this.add.rectangle(
         20,
@@ -662,7 +636,7 @@ class VillageScene extends Phaser.Scene {
       0.5
     );
 
-    // XP FILL
+    // XP BAR
     this.xpBarFill =
       this.add.rectangle(
         20,
@@ -726,8 +700,7 @@ class VillageScene extends Phaser.Scene {
 
     const percentage =
       Phaser.Math.Clamp(
-        xp /
-          this.xpNeeded,
+        xp / this.xpNeeded,
         0,
         1
       );
@@ -763,7 +736,9 @@ class VillageScene extends Phaser.Scene {
   // GET TOTAL XP BONUS
   // ==================================================
 
-  getTotalXPBonus() {
+  getTotalXPBonus(
+    questionType = "isim"
+  ) {
     let totalBonus = 0;
 
     if (
@@ -789,31 +764,52 @@ class VillageScene extends Phaser.Scene {
           return;
         }
 
-        const equippedItem =
+        const item =
           this.playerData.inventory.find(
-            (item) =>
-              item &&
-              item.id ===
+            (inventoryItem) =>
+              inventoryItem &&
+              inventoryItem.id ===
                 equippedId
           );
 
-        if (!equippedItem) {
+        if (!item) {
           return;
         }
 
-        const bonus =
-          Number(
-            equippedItem.xpBonus
-          );
+        const effectType =
+          item.effectType;
 
+        const effectValue =
+          Number(
+            item.effectValue
+          ) || 0;
+
+        // Sword of Isim
         if (
-          Number.isFinite(
-            bonus
-          )
+          effectType === "isimXp" &&
+          questionType === "isim"
         ) {
           totalBonus +=
-            bonus;
+            effectValue;
         }
+
+        // Ring of Rafa'
+        if (
+          effectType === "nahwuXp"
+        ) {
+          totalBonus +=
+            effectValue;
+        }
+
+        // Crown of Nahwu
+        if (
+          effectType === "allXp"
+        ) {
+          totalBonus +=
+            effectValue;
+        }
+
+        // Defense tidak dihitung sebagai XP
       }
     );
 
@@ -821,17 +817,82 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
+  // GET TOTAL DEFENSE
+  // ==================================================
+
+  getTotalDefense() {
+    let totalDefense = 0;
+
+    if (
+      !this.playerData.equipped
+    ) {
+      return 0;
+    }
+
+    const slots = [
+      "Weapon",
+      "Armor",
+      "Accessory",
+    ];
+
+    slots.forEach(
+      (slot) => {
+        const equippedId =
+          this.playerData.equipped[
+            slot
+          ];
+
+        if (!equippedId) {
+          return;
+        }
+
+        const item =
+          this.playerData.inventory.find(
+            (inventoryItem) =>
+              inventoryItem &&
+              inventoryItem.id ===
+                equippedId
+          );
+
+        if (!item) {
+          return;
+        }
+
+        const effectType =
+          item.effectType;
+
+        const effectValue =
+          Number(
+            item.effectValue
+          ) || 0;
+
+        if (
+          effectType === "defense"
+        ) {
+          totalDefense +=
+            effectValue;
+        }
+      }
+    );
+
+    return totalDefense;
+  }
+
+  // ==================================================
   // ADD XP
   // ==================================================
 
   addXP(
-    baseAmount
+    baseAmount,
+    questionType = "isim"
   ) {
     const baseXP =
       Number(baseAmount) || 0;
 
     const xpBonus =
-      this.getTotalXPBonus();
+      this.getTotalXPBonus(
+        questionType
+      );
 
     const bonusXP =
       Math.floor(
@@ -860,7 +921,8 @@ class VillageScene extends Phaser.Scene {
     currentXP +=
       finalXP;
 
-    let leveledUp = false;
+    let leveledUp =
+      false;
 
     // ==================================================
     // LEVEL UP
@@ -873,15 +935,18 @@ class VillageScene extends Phaser.Scene {
       currentXP -=
         this.xpNeeded;
 
-      level += 1;
+      level +=
+        1;
 
-      gold += 100;
+      gold +=
+        100;
 
-      leveledUp = true;
+      leveledUp =
+        true;
     }
 
     // ==================================================
-    // SIMPAN HASIL
+    // SAVE
     // ==================================================
 
     this.playerData.xp =
@@ -898,12 +963,10 @@ class VillageScene extends Phaser.Scene {
       this.playerData
     );
 
-    // Update HUD
     this.updateHUD();
 
-    // Debug
     console.log(
-      "========== XP =========="
+      "========== XP REWARD =========="
     );
 
     console.log(
@@ -912,7 +975,12 @@ class VillageScene extends Phaser.Scene {
     );
 
     console.log(
-      "Bonus:",
+      "Question Type:",
+      questionType
+    );
+
+    console.log(
+      "Equipment Bonus:",
       xpBonus
     );
 
@@ -937,7 +1005,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     console.log(
-      "========================"
+      "================================"
     );
 
     return {
@@ -958,7 +1026,6 @@ class VillageScene extends Phaser.Scene {
     y,
     name
   ) {
-    // BODY
     this.add.rectangle(
       x,
       y,
@@ -967,7 +1034,6 @@ class VillageScene extends Phaser.Scene {
       0xf5e5c0
     );
 
-    // ROOF
     this.add.triangle(
       x,
       y - 85,
@@ -980,7 +1046,6 @@ class VillageScene extends Phaser.Scene {
       0xb44a3a
     );
 
-    // NAME
     this.add
       .text(
         x,
@@ -994,7 +1059,6 @@ class VillageScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    // COLLIDER
     const collider =
       this.add.rectangle(
         x,
@@ -1023,7 +1087,7 @@ class VillageScene extends Phaser.Scene {
     x,
     y
   ) {
-    // TRUNK
+    // Batang
     this.add.rectangle(
       x,
       y + 35,
@@ -1032,7 +1096,7 @@ class VillageScene extends Phaser.Scene {
       0x8b4513
     );
 
-    // CENTER
+    // Daun tengah
     this.add.circle(
       x,
       y,
@@ -1040,7 +1104,7 @@ class VillageScene extends Phaser.Scene {
       0x2e7d32
     );
 
-    // LEFT
+    // Daun kiri
     this.add.circle(
       x - 20,
       y + 10,
@@ -1048,7 +1112,7 @@ class VillageScene extends Phaser.Scene {
       0x388e3c
     );
 
-    // RIGHT
+    // Daun kanan
     this.add.circle(
       x + 20,
       y + 10,
@@ -1056,7 +1120,6 @@ class VillageScene extends Phaser.Scene {
       0x388e3c
     );
 
-    // COLLIDER
     const collider =
       this.add.rectangle(
         x,
@@ -1091,12 +1154,13 @@ class VillageScene extends Phaser.Scene {
       y,
       opened: false,
       reward,
+
       body: null,
       lid: null,
       label: null,
     };
 
-    // BODY
+    // Body
     chest.body =
       this.add.rectangle(
         x,
@@ -1106,7 +1170,7 @@ class VillageScene extends Phaser.Scene {
         0x8b4513
       );
 
-    // LID
+    // Lid
     chest.lid =
       this.add.rectangle(
         x,
@@ -1116,7 +1180,7 @@ class VillageScene extends Phaser.Scene {
         0xd4af37
       );
 
-    // LABEL
+    // Label
     chest.label =
       this.add
         .text(
@@ -1213,7 +1277,7 @@ class VillageScene extends Phaser.Scene {
     this.quizObjects =
       [];
 
-    // OVERLAY
+    // Overlay
     const overlay =
       this.add.rectangle(
         400,
@@ -1228,7 +1292,7 @@ class VillageScene extends Phaser.Scene {
       100
     );
 
-    // PANEL
+    // Panel
     const panel =
       this.add.rectangle(
         400,
@@ -1242,7 +1306,7 @@ class VillageScene extends Phaser.Scene {
       101
     );
 
-    // TITLE
+    // Title
     const title =
       this.add
         .text(
@@ -1261,7 +1325,7 @@ class VillageScene extends Phaser.Scene {
       102
     );
 
-    // DIFFICULTY
+    // Difficulty
     const difficulty =
       this.add
         .text(
@@ -1280,7 +1344,7 @@ class VillageScene extends Phaser.Scene {
       102
     );
 
-    // QUESTION
+    // Question
     const question =
       this.add
         .text(
@@ -1292,7 +1356,6 @@ class VillageScene extends Phaser.Scene {
             color: "#2D3748",
             fontStyle: "bold",
             align: "center",
-
             wordWrap: {
               width: 540,
             },
@@ -1365,7 +1428,6 @@ class VillageScene extends Phaser.Scene {
           text
         );
 
-        // HOVER
         button.on(
           "pointerover",
           () => {
@@ -1404,7 +1466,6 @@ class VillageScene extends Phaser.Scene {
           }
         );
 
-        // CLICK
         button.on(
           "pointerdown",
           () => {
@@ -1433,11 +1494,11 @@ class VillageScene extends Phaser.Scene {
   answerQuiz(
     isCorrect
   ) {
-    // WRONG
+    // Jawaban salah
     if (!isCorrect) {
       this.showResult(
         "SALAH!",
-        "Belum tepat.\nCoba pahami lagi materinya!",
+        "Belum tepat.\nCoba tantangan berikutnya!",
         false
       );
 
@@ -1448,9 +1509,15 @@ class VillageScene extends Phaser.Scene {
     // XP
     // ==================================================
 
+    const questionType =
+      this.currentQuestion
+        ? this.currentQuestion.type
+        : "isim";
+
     const xpResult =
       this.addXP(
-        100
+        100,
+        questionType
       );
 
     // ==================================================
@@ -1463,15 +1530,13 @@ class VillageScene extends Phaser.Scene {
       ) + 50;
 
     // ==================================================
-    // ITEM REWARD
+    // ITEM
     // ==================================================
 
     if (
       this.currentChest &&
       this.currentChest.reward
     ) {
-      // Salin object supaya data inventory
-      // tidak bergantung langsung ke object global
       const rewardItem = {
         ...this.currentChest.reward,
       };
@@ -1482,7 +1547,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // SAVE PLAYER
+    // SAVE
     // ==================================================
 
     this.registry.set(
@@ -1493,7 +1558,7 @@ class VillageScene extends Phaser.Scene {
     this.updateHUD();
 
     // ==================================================
-    // CHEST OPENED
+    // OPEN CHEST
     // ==================================================
 
     if (
@@ -1512,16 +1577,19 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // QUEST
+    // QUEST PROGRESS
     // ==================================================
 
     const questCompleted =
       this.updateQuestProgress(
-        "isim"
+        questionType
       );
 
+    this.pendingQuestCompletion =
+      questCompleted;
+
     // ==================================================
-    // MESSAGE
+    // RESULT MESSAGE
     // ==================================================
 
     let message =
@@ -1538,7 +1606,7 @@ class VillageScene extends Phaser.Scene {
     message +=
       "\n+50 GOLD";
 
-    // Reward item
+    // Reward
     if (
       this.currentChest &&
       this.currentChest.reward
@@ -1547,7 +1615,7 @@ class VillageScene extends Phaser.Scene {
         `\n${this.currentChest.reward.icon} ${this.currentChest.reward.name}`;
     }
 
-    // Quest progress
+    // Quest
     if (
       this.activeQuest &&
       !questCompleted
@@ -1556,16 +1624,13 @@ class VillageScene extends Phaser.Scene {
         `\n\nQuest: ${this.activeQuest.progress}/${this.activeQuest.requiredProgress}`;
     }
 
-    // Level up
+    // Level Up
     if (
       xpResult.leveledUp
     ) {
       message +=
         "\n\nLEVEL UP!";
     }
-
-    this.pendingQuestCompletion =
-      questCompleted;
 
     this.showResult(
       "BENAR!",
@@ -1585,7 +1650,6 @@ class VillageScene extends Phaser.Scene {
   ) {
     this.clearQuiz();
 
-    // OVERLAY
     const overlay =
       this.add.rectangle(
         400,
@@ -1600,7 +1664,6 @@ class VillageScene extends Phaser.Scene {
       200
     );
 
-    // PANEL
     const panel =
       this.add.rectangle(
         400,
@@ -1616,7 +1679,6 @@ class VillageScene extends Phaser.Scene {
       201
     );
 
-    // TITLE
     const title =
       this.add
         .text(
@@ -1637,7 +1699,6 @@ class VillageScene extends Phaser.Scene {
       202
     );
 
-    // MESSAGE
     const message =
       this.add
         .text(
@@ -1648,7 +1709,6 @@ class VillageScene extends Phaser.Scene {
             fontSize: "19px",
             color: "#2D3748",
             align: "center",
-
             wordWrap: {
               width: 450,
             },
@@ -1660,7 +1720,6 @@ class VillageScene extends Phaser.Scene {
       202
     );
 
-    // BUTTON
     const button =
       this.add.rectangle(
         400,
@@ -1715,6 +1774,10 @@ class VillageScene extends Phaser.Scene {
         this.currentQuestion =
           null;
 
+        // ==================================================
+        // QUEST COMPLETE
+        // ==================================================
+
         if (
           this.pendingQuestCompletion
         ) {
@@ -1766,7 +1829,7 @@ class VillageScene extends Phaser.Scene {
     this.npcDialogObjects =
       [];
 
-    // OVERLAY
+    // Overlay
     const overlay =
       this.add.rectangle(
         400,
@@ -1781,7 +1844,7 @@ class VillageScene extends Phaser.Scene {
       400
     );
 
-    // PANEL
+    // Panel
     const panel =
       this.add.rectangle(
         400,
@@ -1795,7 +1858,7 @@ class VillageScene extends Phaser.Scene {
       401
     );
 
-    // NAME
+    // Nama
     const name =
       this.add
         .text(
@@ -1814,7 +1877,7 @@ class VillageScene extends Phaser.Scene {
       402
     );
 
-    // DIALOG
+    // Dialog
     const dialog =
       this.add.text(
         80,
@@ -1832,7 +1895,7 @@ class VillageScene extends Phaser.Scene {
       402
     );
 
-    // QUEST
+    // Quest
     const quest =
       quests.basicIsim;
 
@@ -2002,19 +2065,31 @@ class VillageScene extends Phaser.Scene {
   ) {
     this.activeQuest = {
       id: quest.id,
+
       title: quest.title,
+
       description:
         quest.description,
+
       type: quest.type,
 
       progress: 0,
 
       requiredProgress:
-        quest.requiredProgress,
+        Number(
+          quest.requiredProgress
+        ) || 0,
 
       reward: {
-        xp: quest.reward.xp,
-        gold: quest.reward.gold,
+        xp:
+          Number(
+            quest.reward.xp
+          ) || 0,
+
+        gold:
+          Number(
+            quest.reward.gold
+          ) || 0,
       },
     };
 
@@ -2050,8 +2125,7 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    this.npcDialogObjects =
-      [];
+    this.npcDialogObjects = [];
 
     this.npcDialogOpen =
       false;
@@ -2073,7 +2147,6 @@ class VillageScene extends Phaser.Scene {
     this.questObjects =
       [];
 
-    // PANEL
     const panel =
       this.add.rectangle(
         610,
@@ -2088,7 +2161,6 @@ class VillageScene extends Phaser.Scene {
       50
     );
 
-    // LABEL
     const label =
       this.add.text(
         475,
@@ -2105,7 +2177,6 @@ class VillageScene extends Phaser.Scene {
       51
     );
 
-    // TITLE
     const title =
       this.add.text(
         475,
@@ -2122,7 +2193,6 @@ class VillageScene extends Phaser.Scene {
       51
     );
 
-    // PROGRESS
     const progress =
       this.add.text(
         475,
@@ -2171,6 +2241,11 @@ class VillageScene extends Phaser.Scene {
         this.activeQuest.progress
       ) || 0;
 
+    this.activeQuest.requiredProgress =
+      Number(
+        this.activeQuest.requiredProgress
+      ) || 0;
+
     this.activeQuest.progress +=
       1;
 
@@ -2182,10 +2257,14 @@ class VillageScene extends Phaser.Scene {
         this.activeQuest.requiredProgress;
     }
 
+    // Simpan
     this.registry.set(
       "activeQuest",
       this.activeQuest
     );
+
+    // Langsung update HUD
+    this.showQuestHUD();
 
     return (
       this.activeQuest.progress >=
@@ -2213,7 +2292,8 @@ class VillageScene extends Phaser.Scene {
     // Reward XP
     const xpResult =
       this.addXP(
-        reward.xp
+        reward.xp,
+        completedQuest.type
       );
 
     // Reward Gold
@@ -2233,7 +2313,7 @@ class VillageScene extends Phaser.Scene {
 
     this.updateHUD();
 
-    // Hapus HUD quest
+    // Clear quest HUD
     this.clearQuestHUD();
 
     // Reset quest
@@ -2271,7 +2351,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // QUEST COMPLETE
+  // QUEST COMPLETE UI
   // ==================================================
 
   showQuestComplete(
@@ -2284,7 +2364,6 @@ class VillageScene extends Phaser.Scene {
     this.questCompleteObjects =
       [];
 
-    // OVERLAY
     const overlay =
       this.add.rectangle(
         400,
@@ -2299,7 +2378,6 @@ class VillageScene extends Phaser.Scene {
       500
     );
 
-    // PANEL
     const panel =
       this.add.rectangle(
         400,
@@ -2313,7 +2391,6 @@ class VillageScene extends Phaser.Scene {
       501
     );
 
-    // TITLE
     const title =
       this.add
         .text(
@@ -2332,7 +2409,6 @@ class VillageScene extends Phaser.Scene {
       502
     );
 
-    // QUEST NAME
     const quest =
       this.add
         .text(
@@ -2351,7 +2427,6 @@ class VillageScene extends Phaser.Scene {
       502
     );
 
-    // REWARD
     const reward =
       this.add
         .text(
@@ -2362,6 +2437,9 @@ class VillageScene extends Phaser.Scene {
             fontSize: "19px",
             color: "#2D3748",
             align: "center",
+            wordWrap: {
+              width: 450,
+            },
           }
         )
         .setOrigin(0.5);
@@ -2370,7 +2448,6 @@ class VillageScene extends Phaser.Scene {
       502
     );
 
-    // BUTTON
     const button =
       this.add.rectangle(
         400,
@@ -2580,8 +2657,8 @@ class VillageScene extends Phaser.Scene {
     return (
       this.playerData.inventory.find(
         (item) =>
-          item.id ===
-          equippedId
+          item &&
+          item.id === equippedId
       ) || null
     );
   }
@@ -2611,7 +2688,7 @@ class VillageScene extends Phaser.Scene {
     this.inventoryObjects =
       [];
 
-    // OVERLAY
+    // Overlay
     const overlay =
       this.add.rectangle(
         400,
@@ -2626,7 +2703,7 @@ class VillageScene extends Phaser.Scene {
       300
     );
 
-    // PANEL
+    // Panel
     const panel =
       this.add.rectangle(
         400,
@@ -2640,7 +2717,7 @@ class VillageScene extends Phaser.Scene {
       301
     );
 
-    // TITLE
+    // Title
     const title =
       this.add
         .text(
@@ -2659,7 +2736,7 @@ class VillageScene extends Phaser.Scene {
       302
     );
 
-    // STATS
+    // Stats
     const stats =
       this.add
         .text(
@@ -2686,7 +2763,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // EMPTY
+    // EMPTY INVENTORY
     // ==================================================
 
     if (
@@ -2728,7 +2805,7 @@ class VillageScene extends Phaser.Scene {
           185 +
           index * 105;
 
-        // CARD
+        // Card
         const card =
           this.add.rectangle(
             400,
@@ -2742,7 +2819,7 @@ class VillageScene extends Phaser.Scene {
           302
         );
 
-        // ICON
+        // Icon
         const icon =
           this.add
             .text(
@@ -2760,7 +2837,7 @@ class VillageScene extends Phaser.Scene {
           303
         );
 
-        // NAME
+        // Name
         const itemName =
           this.add.text(
             200,
@@ -2777,7 +2854,7 @@ class VillageScene extends Phaser.Scene {
           303
         );
 
-        // TYPE
+        // Type
         const itemType =
           this.add.text(
             200,
@@ -2793,7 +2870,7 @@ class VillageScene extends Phaser.Scene {
           303
         );
 
-        // RARITY
+        // Rarity
         const rarity =
           this.add.text(
             200,
@@ -2813,7 +2890,7 @@ class VillageScene extends Phaser.Scene {
           303
         );
 
-        // DESCRIPTION
+        // Description
         const description =
           this.add.text(
             350,
@@ -2843,10 +2920,7 @@ class VillageScene extends Phaser.Scene {
             item
           );
 
-        // ==================================================
-        // BUTTON
-        // ==================================================
-
+        // Button
         const equipButton =
           this.add.rectangle(
             650,
@@ -2886,7 +2960,7 @@ class VillageScene extends Phaser.Scene {
           304
         );
 
-        // HOVER
+        // Hover
         equipButton.on(
           "pointerover",
           () => {
@@ -2909,7 +2983,7 @@ class VillageScene extends Phaser.Scene {
           }
         );
 
-        // CLICK
+        // Click
         equipButton.on(
           "pointerdown",
           () => {
@@ -2925,7 +2999,6 @@ class VillageScene extends Phaser.Scene {
           }
         );
 
-        // SAVE OBJECTS
         this.inventoryObjects.push(
           card,
           icon,
@@ -3013,8 +3086,7 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    this.inventoryObjects =
-      [];
+    this.inventoryObjects = [];
 
     this.inventoryOpen =
       false;
