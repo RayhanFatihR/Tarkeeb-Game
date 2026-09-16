@@ -5,27 +5,59 @@ class Monster {
     scene,
     x,
     y,
-    name = "Nahwu Slime"
+    monsterData
   ) {
     this.scene = scene;
 
     this.x = x;
     this.y = y;
 
-    this.name = name;
-
     // ==================================================
-    // MONSTER STATS
+    // MONSTER DATA
     // ==================================================
 
-    this.maxHP = 100;
-    this.hp = 100;
+    this.id =
+      monsterData.id;
 
-    this.attack = 10;
-    this.defense = 5;
+    this.name =
+      monsterData.name;
+
+    this.maxHP =
+      Number(
+        monsterData.maxHP
+      ) || 100;
+
+    this.hp =
+      this.maxHP;
+
+    this.attack =
+      Number(
+        monsterData.attack
+      ) || 10;
+
+    this.defense =
+      Number(
+        monsterData.defense
+      ) || 5;
+
+    this.reward =
+      monsterData.reward || {
+        xp: 100,
+        gold: 50,
+      };
 
     // ==================================================
-    // CREATE VISUAL
+    // STATUS
+    // ==================================================
+
+    this.destroyed =
+      false;
+
+    this.isNearby =
+      false;
+
+    // ==================================================
+    // BODY
     // ==================================================
 
     this.body =
@@ -36,7 +68,10 @@ class Monster {
         0xc53030
       );
 
-    // Mata kiri
+    // ==================================================
+    // EYES
+    // ==================================================
+
     this.leftEye =
       scene.add.circle(
         x - 9,
@@ -45,7 +80,6 @@ class Monster {
         0xffffff
       );
 
-    // Mata kanan
     this.rightEye =
       scene.add.circle(
         x + 9,
@@ -63,7 +97,7 @@ class Monster {
         .text(
           x,
           y + 38,
-          name,
+          this.name,
           {
             fontSize: "14px",
             color: "#ffffff",
@@ -73,7 +107,7 @@ class Monster {
         .setOrigin(0.5);
 
     // ==================================================
-    // HP BAR BACKGROUND
+    // HP BACKGROUND
     // ==================================================
 
     this.hpBackground =
@@ -119,8 +153,6 @@ class Monster {
     // INTERACTION
     // ==================================================
 
-    this.isNearby = false;
-
     this.interactionText =
       scene.add
         .text(
@@ -152,7 +184,10 @@ class Monster {
   // ==================================================
 
   update(player) {
-    if (!player) {
+    if (
+      !player ||
+      this.destroyed
+    ) {
       return;
     }
 
@@ -165,13 +200,14 @@ class Monster {
       );
 
     // ==================================================
-    // CHECK DISTANCE
+    // DISTANCE
     // ==================================================
 
     if (
       distance < 80
     ) {
-      this.isNearby = true;
+      this.isNearby =
+        true;
 
       this.interactionText.setText(
         "[ E ] Lawan Monster"
@@ -181,7 +217,8 @@ class Monster {
         true
       );
     } else {
-      this.isNearby = false;
+      this.isNearby =
+        false;
 
       this.interactionText.setVisible(
         false
@@ -189,7 +226,7 @@ class Monster {
     }
 
     // ==================================================
-    // UPDATE HP BAR
+    // HP BAR
     // ==================================================
 
     const percentage =
@@ -205,7 +242,10 @@ class Monster {
       8
     );
 
-    // Update posisi visual
+    // ==================================================
+    // POSITION
+    // ==================================================
+
     this.nameText.setPosition(
       this.x,
       this.y + 38
@@ -234,8 +274,22 @@ class Monster {
   takeDamage(
     damage
   ) {
+    if (
+      this.destroyed
+    ) {
+      return 0;
+    }
+
+    const finalDamage =
+      Math.max(
+        1,
+        Number(
+          damage
+        ) || 0
+      );
+
     this.hp -=
-      damage;
+      finalDamage;
 
     if (
       this.hp < 0
@@ -243,7 +297,7 @@ class Monster {
       this.hp = 0;
     }
 
-    return this.hp;
+    return finalDamage;
   }
 
   // ==================================================
@@ -252,7 +306,8 @@ class Monster {
 
   isDead() {
     return (
-      this.hp <= 0
+      this.hp <= 0 ||
+      this.destroyed
     );
   }
 
@@ -261,32 +316,55 @@ class Monster {
   // ==================================================
 
   destroy() {
+    if (
+      this.destroyed
+    ) {
+      return;
+    }
+
+    this.destroyed =
+      true;
+
+    this.isNearby =
+      false;
+
     if (this.body) {
       this.body.destroy();
+      this.body = null;
     }
 
     if (this.leftEye) {
       this.leftEye.destroy();
+      this.leftEye = null;
     }
 
     if (this.rightEye) {
       this.rightEye.destroy();
+      this.rightEye = null;
     }
 
     if (this.nameText) {
       this.nameText.destroy();
+      this.nameText = null;
     }
 
-    if (this.hpBackground) {
+    if (
+      this.hpBackground
+    ) {
       this.hpBackground.destroy();
+      this.hpBackground = null;
     }
 
     if (this.hpBar) {
       this.hpBar.destroy();
+      this.hpBar = null;
     }
 
-    if (this.interactionText) {
+    if (
+      this.interactionText
+    ) {
       this.interactionText.destroy();
+      this.interactionText = null;
     }
   }
 }

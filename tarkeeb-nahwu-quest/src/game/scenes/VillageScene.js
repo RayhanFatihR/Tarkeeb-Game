@@ -4,6 +4,7 @@ import Monster from "../objects/Monster";
 import quests from "../data/quests";
 import questions from "../data/questions";
 import items from "../data/items";
+import monsters from "../data/monsters";
 
 class VillageScene extends Phaser.Scene {
   constructor() {
@@ -36,7 +37,6 @@ class VillageScene extends Phaser.Scene {
       };
     }
 
-    // Normalisasi data
     savedData.level =
       Number(savedData.level) || 1;
 
@@ -46,7 +46,11 @@ class VillageScene extends Phaser.Scene {
     savedData.gold =
       Number(savedData.gold) || 0;
 
-    if (!Array.isArray(savedData.inventory)) {
+    if (
+      !Array.isArray(
+        savedData.inventory
+      )
+    ) {
       savedData.inventory = [];
     }
 
@@ -59,19 +63,22 @@ class VillageScene extends Phaser.Scene {
     }
 
     if (
-      savedData.equipped.Weapon === undefined
+      savedData.equipped.Weapon ===
+      undefined
     ) {
       savedData.equipped.Weapon = null;
     }
 
     if (
-      savedData.equipped.Armor === undefined
+      savedData.equipped.Armor ===
+      undefined
     ) {
       savedData.equipped.Armor = null;
     }
 
     if (
-      savedData.equipped.Accessory === undefined
+      savedData.equipped.Accessory ===
+      undefined
     ) {
       savedData.equipped.Accessory = null;
     }
@@ -116,7 +123,7 @@ class VillageScene extends Phaser.Scene {
     this.questCompleteOpen = false;
 
     // ==================================================
-    // OBJECT ARRAYS
+    // ARRAYS
     // ==================================================
 
     this.quizObjects = [];
@@ -145,22 +152,21 @@ class VillageScene extends Phaser.Scene {
     this.isDefending = false;
 
     // ==================================================
-    // BATTLE STATE
+    // BATTLE UI
     // ==================================================
 
     this.battleLogText = null;
     this.battlePlayerHPText = null;
     this.battleMonsterHPText = null;
-    this.battlePlayerDefenseText = null;
 
     // ==================================================
-    // CREATE WORLD
+    // WORLD
     // ==================================================
 
     this.createWorld();
 
     // ==================================================
-    // CREATE PLAYER
+    // PLAYER
     // ==================================================
 
     this.createPlayer();
@@ -205,7 +211,7 @@ class VillageScene extends Phaser.Scene {
     this.updateHUD();
 
     // ==================================================
-    // QUEST HUD
+    // QUEST
     // ==================================================
 
     if (this.activeQuest) {
@@ -283,7 +289,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // TREES
+    // TREE
     // ==================================================
 
     this.createTree(80, 100);
@@ -320,7 +326,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // MONSTERS
+    // MONSTER
     // ==================================================
 
     this.monsters = [];
@@ -330,7 +336,7 @@ class VillageScene extends Phaser.Scene {
         this,
         580,
         500,
-        "Nahwu Slime"
+        monsters.nahwuSlime
       );
 
     this.monsters.push(
@@ -400,7 +406,7 @@ class VillageScene extends Phaser.Scene {
         )
         .setOrigin(0.5);
 
-    // Interaction
+    // Interaction text
     this.interactText =
       this.add
         .text(
@@ -411,6 +417,7 @@ class VillageScene extends Phaser.Scene {
             fontSize: "20px",
             color: "#ffffff",
             backgroundColor: "#1A365D",
+
             padding: {
               left: 15,
               right: 15,
@@ -475,20 +482,22 @@ class VillageScene extends Phaser.Scene {
       return;
     }
 
-    // Reset prompt
+    // ==================================================
+    // RESET PROMPT
+    // ==================================================
+
     this.interactText.setVisible(
       false
-    );
-
-    // Reset velocity
-    this.player.body.setVelocity(
-      0,
-      0
     );
 
     // ==================================================
     // MOVEMENT
     // ==================================================
+
+    this.player.body.setVelocity(
+      0,
+      0
+    );
 
     if (
       this.keys.left.isDown ||
@@ -558,20 +567,18 @@ class VillageScene extends Phaser.Scene {
     // MONSTER UPDATE
     // ==================================================
 
-    if (this.monsters) {
-      this.monsters.forEach(
-        (monster) => {
-          if (
-            monster &&
-            !monster.isDead()
-          ) {
-            monster.update(
-              this.player
-            );
-          }
+    this.monsters.forEach(
+      (monster) => {
+        if (
+          monster &&
+          !monster.isDead()
+        ) {
+          monster.update(
+            this.player
+          );
         }
-      );
-    }
+      }
+    );
 
     // ==================================================
     // CHEST
@@ -608,10 +615,7 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    // ==================================================
-    // CHEST INTERACTION
-    // ==================================================
-
+    // Chest interaction
     if (
       nearestChest &&
       nearestChestDistance < 80
@@ -675,7 +679,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // NPC INTERACTION
+    // NPC
     // ==================================================
 
     if (
@@ -706,13 +710,8 @@ class VillageScene extends Phaser.Scene {
 
   getNearestMonster() {
     let nearestMonster = null;
-
     let nearestDistance =
       Infinity;
-
-    if (!this.monsters) {
-      return null;
-    }
 
     this.monsters.forEach(
       (monster) => {
@@ -754,7 +753,10 @@ class VillageScene extends Phaser.Scene {
   startBattle(
     monster
   ) {
-    if (!monster) {
+    if (
+      !monster ||
+      monster.isDead()
+    ) {
       return;
     }
 
@@ -764,11 +766,11 @@ class VillageScene extends Phaser.Scene {
     this.isBattleOpen =
       true;
 
-    this.isDefending =
-      false;
-
     this.playerHP =
       this.playerMaxHP;
+
+    this.isDefending =
+      false;
 
     this.interactText.setVisible(
       false
@@ -778,7 +780,7 @@ class VillageScene extends Phaser.Scene {
       [];
 
     // ==================================================
-    // BATTLE OVERLAY
+    // OVERLAY
     // ==================================================
 
     const overlay =
@@ -796,7 +798,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // BATTLE PANEL
+    // PANEL
     // ==================================================
 
     const panel =
@@ -857,7 +859,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // MONSTER HP BAR BACKGROUND
+    // MONSTER HP
     // ==================================================
 
     const monsterHPBackground =
@@ -878,10 +880,6 @@ class VillageScene extends Phaser.Scene {
       0.5
     );
 
-    // ==================================================
-    // MONSTER HP BAR
-    // ==================================================
-
     const monsterHPBar =
       this.add.rectangle(
         230,
@@ -899,10 +897,6 @@ class VillageScene extends Phaser.Scene {
       0,
       0.5
     );
-
-    // ==================================================
-    // MONSTER HP TEXT
-    // ==================================================
 
     this.battleMonsterHPText =
       this.add
@@ -923,7 +917,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // PLAYER NAME
+    // PLAYER
     // ==================================================
 
     const playerName =
@@ -944,10 +938,6 @@ class VillageScene extends Phaser.Scene {
       602
     );
 
-    // ==================================================
-    // PLAYER HP BACKGROUND
-    // ==================================================
-
     const playerHPBackground =
       this.add.rectangle(
         230,
@@ -966,10 +956,6 @@ class VillageScene extends Phaser.Scene {
       0.5
     );
 
-    // ==================================================
-    // PLAYER HP BAR
-    // ==================================================
-
     const playerHPBar =
       this.add.rectangle(
         230,
@@ -987,10 +973,6 @@ class VillageScene extends Phaser.Scene {
       0,
       0.5
     );
-
-    // ==================================================
-    // PLAYER HP TEXT
-    // ==================================================
 
     this.battlePlayerHPText =
       this.add
@@ -1020,7 +1002,7 @@ class VillageScene extends Phaser.Scene {
     const playerDefense =
       this.getTotalDefense();
 
-    this.battlePlayerDefenseText =
+    const playerStats =
       this.add
         .text(
           400,
@@ -1034,7 +1016,7 @@ class VillageScene extends Phaser.Scene {
         )
         .setOrigin(0.5);
 
-    this.battlePlayerDefenseText.setDepth(
+    playerStats.setDepth(
       602
     );
 
@@ -1065,6 +1047,7 @@ class VillageScene extends Phaser.Scene {
             fontSize: "15px",
             color: "#2D3748",
             align: "center",
+
             wordWrap: {
               width: 530,
             },
@@ -1077,7 +1060,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // ATTACK BUTTON
+    // ATTACK
     // ==================================================
 
     const attackButton =
@@ -1116,7 +1099,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // DEFEND BUTTON
+    // DEFEND
     // ==================================================
 
     const defendButton =
@@ -1155,7 +1138,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // EXIT BUTTON
+    // EXIT
     // ==================================================
 
     const exitButton =
@@ -1194,7 +1177,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // INITIAL UPDATE
+    // UPDATE BATTLE UI
     // ==================================================
 
     const updateBattleUI =
@@ -1213,21 +1196,23 @@ class VillageScene extends Phaser.Scene {
             this.playerMaxHP
           );
 
+        const monsterPercentage =
+          monsterHP /
+          monster.maxHP;
+
+        const playerPercentage =
+          playerHP /
+          this.playerMaxHP;
+
         monsterHPBar.setDisplaySize(
           340 *
-            (
-              monsterHP /
-              monster.maxHP
-            ),
+            monsterPercentage,
           20
         );
 
         playerHPBar.setDisplaySize(
           340 *
-            (
-              playerHP /
-              this.playerMaxHP
-            ),
+            playerPercentage,
           20
         );
 
@@ -1243,7 +1228,7 @@ class VillageScene extends Phaser.Scene {
     updateBattleUI();
 
     // ==================================================
-    // ATTACK LOGIC
+    // ATTACK BUTTON
     // ==================================================
 
     attackButton.on(
@@ -1259,7 +1244,6 @@ class VillageScene extends Phaser.Scene {
         this.isDefending =
           false;
 
-        // Player damage
         const attack =
           this.getPlayerAttack();
 
@@ -1280,21 +1264,31 @@ class VillageScene extends Phaser.Scene {
 
         updateBattleUI();
 
-        // Monster mati
+        // ==================================================
+        // MONSTER DEFEATED
+        // ==================================================
+
         if (
           monster.isDead()
         ) {
-          this.battleLogText.setText(
-            `🏆 ${monster.name} berhasil dikalahkan!`
-          );
-
           attackButton.disableInteractive();
           defendButton.disableInteractive();
+
+          this.handleVictory(
+            monster,
+            updateBattleUI
+          );
 
           return;
         }
 
-        // Monster membalas
+        // ==================================================
+        // MONSTER TURN
+        // ==================================================
+
+        attackButton.disableInteractive();
+        defendButton.disableInteractive();
+
         this.time.delayedCall(
           500,
           () => {
@@ -1309,13 +1303,27 @@ class VillageScene extends Phaser.Scene {
               monster,
               updateBattleUI
             );
+
+            if (
+              this.isBattleOpen &&
+              this.playerHP > 0 &&
+              !monster.isDead()
+            ) {
+              attackButton.setInteractive({
+                useHandCursor: true,
+              });
+
+              defendButton.setInteractive({
+                useHandCursor: true,
+              });
+            }
           }
         );
       }
     );
 
     // ==================================================
-    // DEFEND LOGIC
+    // DEFEND BUTTON
     // ==================================================
 
     defendButton.on(
@@ -1335,7 +1343,9 @@ class VillageScene extends Phaser.Scene {
           "🛡️ Kamu bersiap bertahan!"
         );
 
-        // Monster tetap menyerang
+        attackButton.disableInteractive();
+        defendButton.disableInteractive();
+
         this.time.delayedCall(
           500,
           () => {
@@ -1350,6 +1360,20 @@ class VillageScene extends Phaser.Scene {
               monster,
               updateBattleUI
             );
+
+            if (
+              this.isBattleOpen &&
+              this.playerHP > 0 &&
+              !monster.isDead()
+            ) {
+              attackButton.setInteractive({
+                useHandCursor: true,
+              });
+
+              defendButton.setInteractive({
+                useHandCursor: true,
+              });
+            }
           }
         );
       }
@@ -1411,7 +1435,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // SIMPAN OBJECTS
+    // SAVE BATTLE OBJECTS
     // ==================================================
 
     this.battleObjects.push(
@@ -1426,7 +1450,7 @@ class VillageScene extends Phaser.Scene {
       playerHPBackground,
       playerHPBar,
       this.battlePlayerHPText,
-      this.battlePlayerDefenseText,
+      playerStats,
       battleLogBackground,
       this.battleLogText,
       attackButton,
@@ -1460,7 +1484,7 @@ class VillageScene extends Phaser.Scene {
           defense
       );
 
-    // BERTAHAN = DAMAGE 50%
+    // Bertahan = damage setengah
     if (
       this.isDefending
     ) {
@@ -1506,14 +1530,323 @@ class VillageScene extends Phaser.Scene {
     if (
       this.playerHP <= 0
     ) {
-      this.battleLogText.setText(
-        "💀 Kamu kalah dalam pertarungan!"
+      this.handleDefeat(
+        monster
       );
     }
   }
 
   // ==================================================
-  // GET PLAYER ATTACK
+  // HANDLE VICTORY
+  // ==================================================
+
+  handleVictory(
+    monster,
+    updateBattleUI
+  ) {
+    if (!monster) {
+      return;
+    }
+
+    this.battleLogText.setText(
+      `🏆 ${monster.name} berhasil dikalahkan!`
+    );
+
+    updateBattleUI();
+
+    // Tunggu sebentar agar pemain melihat HP 0
+    this.time.delayedCall(
+      700,
+      () => {
+        if (
+          !this.isBattleOpen
+        ) {
+          return;
+        }
+
+        // Hapus monster dari map
+        monster.destroy();
+
+        // Hapus dari array
+        this.monsters =
+          this.monsters.filter(
+            (item) =>
+              item !== monster
+          );
+
+        // Reward
+        const rewardXP = 100;
+        const rewardGold = 75;
+
+        const xpResult =
+          this.addXP(
+            rewardXP,
+            "isim"
+          );
+
+        this.playerData.gold =
+          Number(
+            this.playerData.gold
+          ) +
+          rewardGold;
+
+        this.registry.set(
+          "playerData",
+          this.playerData
+        );
+
+        this.updateHUD();
+
+        // Victory UI
+        this.showBattleResult(
+          "VICTORY!",
+          `Nahwu Slime berhasil dikalahkan!\n\n+${xpResult.finalXP} XP\n+${rewardGold} GOLD`,
+          true
+        );
+      }
+    );
+  }
+
+  // ==================================================
+  // HANDLE DEFEAT
+  // ==================================================
+
+  handleDefeat(monster) {
+    if (!monster) {
+      return;
+    }
+
+    this.battleLogText.setText(
+      "💀 Kamu kalah dalam pertarungan!"
+   );
+
+    this.time.delayedCall(
+     700,
+     () => {
+       if (!this.isBattleOpen) {
+         return;
+        }
+
+        this.showBattleResult(
+         "DEFEAT",
+         "Kamu belum berhasil mengalahkan monster.\n\nCoba lagi setelah meningkatkan equipment-mu.",
+         false
+        );
+      }
+    );
+  }
+
+  // ==================================================
+  // SHOW BATTLE RESULT
+  // ==================================================
+
+  showBattleResult(
+    titleText,
+    messageText,
+    victory
+  ) {
+    this.clearBattle();
+
+    const overlay =
+      this.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x000000,
+        0.75
+      );
+
+    overlay.setDepth(
+      700
+    );
+
+    const panel =
+      this.add.rectangle(
+        400,
+        300,
+        560,
+        350,
+        0xffffff
+      );
+
+    panel.setDepth(
+      701
+    );
+
+    const title =
+      this.add
+        .text(
+          400,
+          190,
+          titleText,
+          {
+            fontSize: "40px",
+            color: victory
+              ? "#15803d"
+              : "#dc2626",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    title.setDepth(
+      702
+    );
+
+    const message =
+      this.add
+        .text(
+          400,
+          285,
+          messageText,
+          {
+            fontSize: "19px",
+            color: "#2D3748",
+            align: "center",
+
+            wordWrap: {
+              width: 470,
+            },
+          }
+        )
+        .setOrigin(0.5);
+
+    message.setDepth(
+      702
+    );
+
+    const button =
+      this.add.rectangle(
+        400,
+        430,
+        220,
+        55,
+        0x1a365d
+      );
+
+    button.setDepth(
+      702
+    );
+
+    button.setInteractive({
+      useHandCursor: true,
+    });
+
+    const buttonText =
+      this.add
+        .text(
+          400,
+          430,
+          "LANJUT",
+          {
+            fontSize: "19px",
+            color: "#ffffff",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    buttonText.setDepth(
+      703
+    );
+
+    this.battleObjects.push(
+      overlay,
+      panel,
+      title,
+      message,
+      button,
+      buttonText
+    );
+
+    button.on(
+      "pointerdown",
+      () => {
+        overlay.destroy();
+        panel.destroy();
+        title.destroy();
+        message.destroy();
+        button.destroy();
+        buttonText.destroy();
+
+        this.battleObjects =
+          [];
+
+        this.currentMonster =
+          null;
+
+        this.isBattleOpen =
+          false;
+
+        this.playerHP =
+          this.playerMaxHP;
+
+        this.isDefending =
+          false;
+
+        // Pastikan object interaction hilang
+        this.interactText.setVisible(
+          false
+        );
+      }
+    );
+  }
+
+  // ==================================================
+  // CLEAR BATTLE
+  // ==================================================
+
+  clearBattle() {
+    if (
+      !this.battleObjects
+    ) {
+      return;
+    }
+
+    this.battleObjects.forEach(
+      (object) => {
+        if (object) {
+          object.destroy();
+        }
+      }
+    );
+
+    this.battleObjects =
+      [];
+
+    this.battleLogText =
+      null;
+
+    this.battlePlayerHPText =
+      null;
+
+    this.battleMonsterHPText =
+      null;
+  }
+
+  // ==================================================
+  // CLOSE BATTLE
+  // ==================================================
+
+  closeBattle() {
+    this.clearBattle();
+
+    this.currentMonster =
+      null;
+
+    this.isDefending =
+      false;
+
+    this.playerHP =
+      this.playerMaxHP;
+
+    this.isBattleOpen =
+      false;
+  }
+
+  // ==================================================
+  // PLAYER ATTACK
   // ==================================================
 
   getPlayerAttack() {
@@ -1545,11 +1878,10 @@ class VillageScene extends Phaser.Scene {
       return attack;
     }
 
-    // Sementara Sword of Isim memberikan
-    // tambahan attack berdasarkan rarity
     const rarity =
       String(
-        weapon.rarity || "Common"
+        weapon.rarity ||
+          "Common"
       ).toLowerCase();
 
     const attackBonus = {
@@ -1560,7 +1892,9 @@ class VillageScene extends Phaser.Scene {
     };
 
     attack +=
-      attackBonus[rarity] || 0;
+      attackBonus[
+        rarity
+      ] || 0;
 
     return attack;
   }
@@ -1711,7 +2045,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // GET TOTAL XP BONUS
+  // XP BONUS
   // ==================================================
 
   getTotalXPBonus(
@@ -1762,26 +2096,27 @@ class VillageScene extends Phaser.Scene {
             item.effectValue
           ) || 0;
 
-        // Isim XP
         if (
-          effectType === "isimXp" &&
-          questionType === "isim"
+          effectType ===
+            "isimXp" &&
+          questionType ===
+            "isim"
         ) {
           totalBonus +=
             effectValue;
         }
 
-        // Nahwu XP
         if (
-          effectType === "nahwuXp"
+          effectType ===
+          "nahwuXp"
         ) {
           totalBonus +=
             effectValue;
         }
 
-        // Semua XP
         if (
-          effectType === "allXp"
+          effectType ===
+          "allXp"
         ) {
           totalBonus +=
             effectValue;
@@ -1793,7 +2128,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // GET TOTAL DEFENSE
+  // DEFENSE
   // ==================================================
 
   getTotalDefense() {
@@ -1834,20 +2169,14 @@ class VillageScene extends Phaser.Scene {
           return;
         }
 
-        const effectType =
-          item.effectType;
-
-        const effectValue =
-          Number(
-            item.effectValue
-          ) || 0;
-
         if (
-          effectType ===
+          item.effectType ===
           "defense"
         ) {
           totalDefense +=
-            effectValue;
+            Number(
+              item.effectValue
+            ) || 0;
         }
       }
     );
@@ -1947,7 +2276,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // CREATE HOUSE
+  // HOUSE
   // ==================================================
 
   createHouse(
@@ -2009,7 +2338,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // CREATE TREE
+  // TREE
   // ==================================================
 
   createTree(
@@ -2066,7 +2395,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // CREATE CHEST
+  // CHEST
   // ==================================================
 
   createChest(
@@ -2079,6 +2408,7 @@ class VillageScene extends Phaser.Scene {
       y,
       opened: false,
       reward,
+
       body: null,
       lid: null,
       label: null,
@@ -2161,7 +2491,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // GET RANDOM QUESTION
+  // RANDOM QUESTION
   // ==================================================
 
   getRandomQuestion() {
@@ -2427,13 +2757,11 @@ class VillageScene extends Phaser.Scene {
         questionType
       );
 
-    // Gold
     this.playerData.gold =
       Number(
         this.playerData.gold
       ) + 50;
 
-    // Reward item
     if (
       this.currentChest &&
       this.currentChest.reward
@@ -2447,7 +2775,6 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    // Save
     this.registry.set(
       "playerData",
       this.playerData
@@ -2455,7 +2782,6 @@ class VillageScene extends Phaser.Scene {
 
     this.updateHUD();
 
-    // Chest opened
     if (
       this.currentChest
     ) {
@@ -2471,7 +2797,6 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    // Quest
     const questCompleted =
       this.updateQuestProgress(
         questionType
@@ -2480,7 +2805,6 @@ class VillageScene extends Phaser.Scene {
     this.pendingQuestCompletion =
       questCompleted;
 
-    // Message
     let message =
       `+${xpResult.finalXP} XP`;
 
@@ -2595,6 +2919,7 @@ class VillageScene extends Phaser.Scene {
             fontSize: "19px",
             color: "#2D3748",
             align: "center",
+
             wordWrap: {
               width: 450,
             },
@@ -3129,7 +3454,6 @@ class VillageScene extends Phaser.Scene {
       this.activeQuest
     );
 
-    // Update HUD
     this.showQuestHUD();
 
     return (
@@ -3212,7 +3536,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // QUEST COMPLETE UI
+  // QUEST COMPLETE
   // ==================================================
 
   showQuestComplete(
@@ -3623,7 +3947,6 @@ class VillageScene extends Phaser.Scene {
       stats
     );
 
-    // Empty
     if (
       this.playerData.inventory
         .length === 0
@@ -3650,7 +3973,6 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    // Items
     this.playerData.inventory.forEach(
       (
         item,
@@ -3858,7 +4180,6 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    // Close
     const closeButton =
       this.add.rectangle(
         400,
@@ -3933,53 +4254,6 @@ class VillageScene extends Phaser.Scene {
       [];
 
     this.inventoryOpen =
-      false;
-  }
-
-  // ==================================================
-  // CLOSE BATTLE
-  // ==================================================
-
-  closeBattle() {
-    if (
-      !this.battleObjects
-    ) {
-      this.isBattleOpen =
-        false;
-
-      return;
-    }
-
-    this.battleObjects.forEach(
-      (object) => {
-        if (object) {
-          object.destroy();
-        }
-      }
-    );
-
-    this.battleObjects =
-      [];
-
-    this.battleLogText =
-      null;
-
-    this.battlePlayerHPText =
-      null;
-
-    this.battleMonsterHPText =
-      null;
-
-    this.battlePlayerDefenseText =
-      null;
-
-    this.currentMonster =
-      null;
-
-    this.isDefending =
-      false;
-
-    this.isBattleOpen =
       false;
   }
 }
