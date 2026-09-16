@@ -1554,29 +1554,49 @@ class VillageScene extends Phaser.Scene {
 
     updateBattleUI();
 
-    // Tunggu sebentar agar pemain melihat HP 0
+    // Tunggu sebentar agar HP 0 terlihat
     this.time.delayedCall(
       700,
       () => {
-        if (
-          !this.isBattleOpen
-        ) {
+        if (!this.isBattleOpen) {
           return;
         }
 
-        // Hapus monster dari map
+        // ==================================================
+        // HAPUS MONSTER
+        // ==================================================
+
         monster.destroy();
 
-        // Hapus dari array
         this.monsters =
           this.monsters.filter(
             (item) =>
               item !== monster
           );
 
-        // Reward
-        const rewardXP = 100;
-        const rewardGold = 75;
+        // ==================================================
+        // AMBIL REWARD DARI MONSTER
+        // ==================================================
+
+        const reward =
+          monster.reward || {
+            xp: 100,
+            gold: 50,
+          };
+
+        const rewardXP =
+          Number(
+            reward.xp
+          ) || 0;
+
+        const rewardGold =
+          Number(
+            reward.gold
+          ) || 0;
+
+        // ==================================================
+        // TAMBAH XP
+        // ==================================================
 
         const xpResult =
           this.addXP(
@@ -1584,11 +1604,19 @@ class VillageScene extends Phaser.Scene {
             "isim"
           );
 
+        // ==================================================
+        // TAMBAH GOLD
+        // ==================================================
+
         this.playerData.gold =
           Number(
             this.playerData.gold
           ) +
           rewardGold;
+
+        // ==================================================
+        // SIMPAN PLAYER DATA
+        // ==================================================
 
         this.registry.set(
           "playerData",
@@ -1597,14 +1625,49 @@ class VillageScene extends Phaser.Scene {
 
         this.updateHUD();
 
-        // Victory UI
+        // ==================================================
+        // VICTORY UI
+        // ==================================================
+
         this.showBattleResult(
           "VICTORY!",
-          `Nahwu Slime berhasil dikalahkan!\n\n+${xpResult.finalXP} XP\n+${rewardGold} GOLD`,
+          `${monster.name} berhasil dikalahkan!\n\n` +
+            `+${xpResult.finalXP} XP\n` +
+            `+${rewardGold} GOLD`,
           true
         );
       }
     );
+  }
+
+  // ==================================================
+  // GET MONSTER REWARD
+  // ==================================================
+
+  getMonsterReward(
+    monster
+  ) {
+    if (
+      !monster ||
+      !monster.reward
+    ) {
+      return {
+        xp: 0,
+        gold: 0,
+      };
+    }
+
+    return {
+      xp:
+        Number(
+          monster.reward.xp
+        ) || 0,
+
+      gold:
+        Number(
+          monster.reward.gold
+        ) || 0,
+    };
   }
 
   // ==================================================
