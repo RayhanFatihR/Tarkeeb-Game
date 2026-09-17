@@ -5,6 +5,7 @@ import quests from "../data/quests";
 import questions from "../data/questions";
 import items from "../data/items";
 import monsters from "../data/monsters";
+import battleQuestions from "../data/battleQuestions";
 
 class VillageScene extends Phaser.Scene {
   constructor() {
@@ -29,6 +30,7 @@ class VillageScene extends Phaser.Scene {
         xp: 0,
         gold: 0,
         inventory: [],
+
         equipped: {
           Weapon: null,
           Armor: null,
@@ -59,22 +61,19 @@ class VillageScene extends Phaser.Scene {
     }
 
     if (
-      savedData.equipped.Weapon ===
-      undefined
+      savedData.equipped.Weapon === undefined
     ) {
       savedData.equipped.Weapon = null;
     }
 
     if (
-      savedData.equipped.Armor ===
-      undefined
+      savedData.equipped.Armor === undefined
     ) {
       savedData.equipped.Armor = null;
     }
 
     if (
-      savedData.equipped.Accessory ===
-      undefined
+      savedData.equipped.Accessory === undefined
     ) {
       savedData.equipped.Accessory = null;
     }
@@ -103,8 +102,7 @@ class VillageScene extends Phaser.Scene {
 
     this.questObjects = [];
 
-    this.pendingQuestCompletion =
-      false;
+    this.pendingQuestCompletion = false;
 
     // ==================================================
     // GAME STATE
@@ -112,6 +110,8 @@ class VillageScene extends Phaser.Scene {
 
     this.isQuizOpen = false;
     this.isBattleOpen = false;
+    this.isBattleQuestionOpen = false;
+
     this.answerLocked = false;
 
     this.inventoryOpen = false;
@@ -119,7 +119,7 @@ class VillageScene extends Phaser.Scene {
     this.questCompleteOpen = false;
 
     // ==================================================
-    // ARRAYS
+    // OBJECT ARRAYS
     // ==================================================
 
     this.quizObjects = [];
@@ -127,6 +127,7 @@ class VillageScene extends Phaser.Scene {
     this.npcDialogObjects = [];
     this.questCompleteObjects = [];
     this.battleObjects = [];
+    this.battleQuestionObjects = [];
 
     // ==================================================
     // CURRENT OBJECTS
@@ -135,6 +136,7 @@ class VillageScene extends Phaser.Scene {
     this.currentQuestion = null;
     this.currentChest = null;
     this.currentMonster = null;
+    this.currentBattleQuestion = null;
 
     // ==================================================
     // PLAYER BATTLE STATS
@@ -148,7 +150,7 @@ class VillageScene extends Phaser.Scene {
     this.isDefending = false;
 
     // ==================================================
-    // BATTLE UI
+    // BATTLE UI REFERENCES
     // ==================================================
 
     this.battleLogText = null;
@@ -201,7 +203,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // HUD UPDATE
+    // UPDATE HUD
     // ==================================================
 
     this.updateHUD();
@@ -220,10 +222,7 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   createWorld() {
-    // ==================================================
-    // BACKGROUND
-    // ==================================================
-
+    // Background
     this.add.rectangle(
       400,
       300,
@@ -232,10 +231,7 @@ class VillageScene extends Phaser.Scene {
       0x7cb342
     );
 
-    // ==================================================
-    // ROAD
-    // ==================================================
-
+    // Jalan vertikal
     this.add.rectangle(
       400,
       300,
@@ -244,6 +240,7 @@ class VillageScene extends Phaser.Scene {
       0xd8c39b
     );
 
+    // Jalan horizontal
     this.add.rectangle(
       400,
       300,
@@ -252,10 +249,7 @@ class VillageScene extends Phaser.Scene {
       0xd8c39b
     );
 
-    // ==================================================
-    // OBSTACLES
-    // ==================================================
-
+    // Obstacles
     this.obstacles =
       this.physics.add.staticGroup();
 
@@ -277,7 +271,7 @@ class VillageScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // ==================================================
-    // HOUSES
+    // HOUSE
     // ==================================================
 
     this.createHouse(
@@ -330,7 +324,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // MULTIPLE MONSTERS
+    // MONSTERS
     // ==================================================
 
     this.monsters = [];
@@ -422,10 +416,7 @@ class VillageScene extends Phaser.Scene {
         Phaser.Input.Keyboard.KeyCodes.I
       );
 
-    // ==================================================
-    // PLAYER LABEL
-    // ==================================================
-
+    // Player label
     this.playerLabel =
       this.add
         .text(
@@ -440,10 +431,7 @@ class VillageScene extends Phaser.Scene {
         )
         .setOrigin(0.5);
 
-    // ==================================================
-    // INTERACTION TEXT
-    // ==================================================
-
+    // Interaction text
     this.interactText =
       this.add
         .text(
@@ -492,7 +480,8 @@ class VillageScene extends Phaser.Scene {
         !this.isQuizOpen &&
         !this.npcDialogOpen &&
         !this.questCompleteOpen &&
-        !this.isBattleOpen
+        !this.isBattleOpen &&
+        !this.isBattleQuestionOpen
       ) {
         this.toggleInventory();
       }
@@ -509,7 +498,8 @@ class VillageScene extends Phaser.Scene {
       this.inventoryOpen ||
       this.npcDialogOpen ||
       this.questCompleteOpen ||
-      this.isBattleOpen
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen
     ) {
       this.player.body.setVelocity(
         0,
@@ -526,10 +516,6 @@ class VillageScene extends Phaser.Scene {
     this.interactText.setVisible(
       false
     );
-
-    // ==================================================
-    // RESET VELOCITY
-    // ==================================================
 
     this.player.body.setVelocity(
       0,
@@ -588,10 +574,7 @@ class VillageScene extends Phaser.Scene {
         );
     }
 
-    // ==================================================
-    // PLAYER LABEL
-    // ==================================================
-
+    // Player label
     this.playerLabel.setPosition(
       this.player.x,
       this.player.y + 35
@@ -1109,7 +1092,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // ATTACK
+    // ATTACK BUTTON
     // ==================================================
 
     const attackButton =
@@ -1148,7 +1131,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // DEFEND
+    // DEFEND BUTTON
     // ==================================================
 
     const defendButton =
@@ -1245,21 +1228,23 @@ class VillageScene extends Phaser.Scene {
             this.playerMaxHP
           );
 
+        const monsterPercentage =
+          monsterHP /
+          monster.maxHP;
+
+        const playerPercentage =
+          playerHP /
+          this.playerMaxHP;
+
         monsterHPBar.setDisplaySize(
           340 *
-            (
-              monsterHP /
-              monster.maxHP
-            ),
+            monsterPercentage,
           20
         );
 
         playerHPBar.setDisplaySize(
           340 *
-            (
-              playerHP /
-              this.playerMaxHP
-            ),
+            playerPercentage,
           20
         );
 
@@ -1288,77 +1273,10 @@ class VillageScene extends Phaser.Scene {
           return;
         }
 
-        this.isDefending =
-          false;
-
-        const attack =
-          this.getPlayerAttack();
-
-        const damage =
-          Math.max(
-            1,
-            attack -
-              monster.defense
-          );
-
-        monster.takeDamage(
-          damage
-        );
-
-        this.battleLogText.setText(
-          `⚔️ Kamu menyerang ${monster.name}!\nDamage: ${damage}`
-        );
-
-        updateBattleUI();
-
-        // Monster defeated
-        if (
-          monster.isDead()
-        ) {
-          attackButton.disableInteractive();
-          defendButton.disableInteractive();
-
-          this.handleVictory(
-            monster,
-            updateBattleUI
-          );
-
-          return;
-        }
-
-        // Monster turn
-        attackButton.disableInteractive();
-        defendButton.disableInteractive();
-
-        this.time.delayedCall(
-          500,
-          () => {
-            if (
-              !this.isBattleOpen ||
-              monster.isDead()
-            ) {
-              return;
-            }
-
-            this.monsterAttack(
-              monster,
-              updateBattleUI
-            );
-
-            if (
-              this.isBattleOpen &&
-              this.playerHP > 0 &&
-              !monster.isDead()
-            ) {
-              attackButton.setInteractive({
-                useHandCursor: true,
-              });
-
-              defendButton.setInteractive({
-                useHandCursor: true,
-              });
-            }
-          }
+        this.openBattleQuestion(
+          attackButton,
+          defendButton,
+          updateBattleUI
         );
       }
     );
@@ -1380,12 +1298,12 @@ class VillageScene extends Phaser.Scene {
         this.isDefending =
           true;
 
+        attackButton.disableInteractive();
+        defendButton.disableInteractive();
+
         this.battleLogText.setText(
           "🛡️ Kamu bersiap bertahan!"
         );
-
-        attackButton.disableInteractive();
-        defendButton.disableInteractive();
 
         this.time.delayedCall(
           500,
@@ -1476,7 +1394,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // SAVE OBJECTS
+    // SAVE BATTLE OBJECTS
     // ==================================================
 
     this.battleObjects.push(
@@ -1501,6 +1419,490 @@ class VillageScene extends Phaser.Scene {
       exitButton,
       exitText
     );
+  }
+
+  // ==================================================
+  // OPEN BATTLE QUESTION
+  // ==================================================
+
+  openBattleQuestion(
+    attackButton,
+    defendButton,
+    updateBattleUI
+  ) {
+    if (
+      !this.currentMonster ||
+      this.currentMonster.isDead()
+    ) {
+      return;
+    }
+
+    this.isBattleQuestionOpen =
+      true;
+
+    this.currentBattleQuestion =
+      this.getRandomBattleQuestion();
+
+    if (
+      !this.currentBattleQuestion
+    ) {
+      this.isBattleQuestionOpen =
+        false;
+
+      return;
+    }
+
+    attackButton.disableInteractive();
+    defendButton.disableInteractive();
+
+    this.showBattleQuestion(
+      attackButton,
+      defendButton,
+      updateBattleUI
+    );
+  }
+
+  // ==================================================
+  // GET RANDOM BATTLE QUESTION
+  // ==================================================
+
+  getRandomBattleQuestion() {
+    if (
+      !battleQuestions ||
+      battleQuestions.length ===
+        0
+    ) {
+      return null;
+    }
+
+    const index =
+      Phaser.Math.Between(
+        0,
+        battleQuestions.length - 1
+      );
+
+    return battleQuestions[
+      index
+    ];
+  }
+
+  // ==================================================
+  // SHOW BATTLE QUESTION
+  // ==================================================
+
+  showBattleQuestion(
+    attackButton,
+    defendButton,
+    updateBattleUI
+  ) {
+    this.battleQuestionObjects =
+      [];
+
+    // ==================================================
+    // OVERLAY
+    // ==================================================
+
+    const overlay =
+      this.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x000000,
+        0.72
+      );
+
+    overlay.setDepth(
+      800
+    );
+
+    // ==================================================
+    // PANEL
+    // ==================================================
+
+    const panel =
+      this.add.rectangle(
+        400,
+        300,
+        650,
+        470,
+        0xffffff
+      );
+
+    panel.setDepth(
+      801
+    );
+
+    // ==================================================
+    // TITLE
+    // ==================================================
+
+    const title =
+      this.add
+        .text(
+          400,
+          75,
+          "📖 NAHWU CHALLENGE",
+          {
+            fontSize: "30px",
+            color: "#1A365D",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    title.setDepth(
+      802
+    );
+
+    // ==================================================
+    // INFO
+    // ==================================================
+
+    const info =
+      this.add
+        .text(
+          400,
+          120,
+          "Jawab dengan benar untuk menyerang!",
+          {
+            fontSize: "15px",
+            color: "#718096",
+            fontStyle: "italic",
+          }
+        )
+        .setOrigin(0.5);
+
+    info.setDepth(
+      802
+    );
+
+    // ==================================================
+    // QUESTION
+    // ==================================================
+
+    const question =
+      this.add
+        .text(
+          400,
+          185,
+          this.currentBattleQuestion.question,
+          {
+            fontSize: "21px",
+            color: "#2D3748",
+            fontStyle: "bold",
+            align: "center",
+
+            wordWrap: {
+              width: 540,
+            },
+          }
+        )
+        .setOrigin(0.5);
+
+    question.setDepth(
+      802
+    );
+
+    this.battleQuestionObjects.push(
+      overlay,
+      panel,
+      title,
+      info,
+      question
+    );
+
+    // ==================================================
+    // ANSWERS
+    // ==================================================
+
+    this.currentBattleQuestion.answers.forEach(
+      (
+        answer,
+        index
+      ) => {
+        const y =
+          255 +
+          index * 55;
+
+        const button =
+          this.add.rectangle(
+            400,
+            y,
+            500,
+            42,
+            0xeaf2ff
+          );
+
+        button.setDepth(
+          802
+        );
+
+        button.setInteractive({
+          useHandCursor: true,
+        });
+
+        const text =
+          this.add
+            .text(
+              400,
+              y,
+              answer.text,
+              {
+                fontSize: "18px",
+                color: "#1A365D",
+                fontStyle: "bold",
+              }
+            )
+            .setOrigin(0.5);
+
+        text.setDepth(
+          803
+        );
+
+        this.battleQuestionObjects.push(
+          button,
+          text
+        );
+
+        // Hover
+        button.on(
+          "pointerover",
+          () => {
+            if (
+              this.answerLocked
+            ) {
+              return;
+            }
+
+            button.setFillStyle(
+              0x3182ce
+            );
+
+            text.setColor(
+              "#ffffff"
+            );
+          }
+        );
+
+        button.on(
+          "pointerout",
+          () => {
+            if (
+              this.answerLocked
+            ) {
+              return;
+            }
+
+            button.setFillStyle(
+              0xeaf2ff
+            );
+
+            text.setColor(
+              "#1A365D"
+            );
+          }
+        );
+
+        // Click
+        button.on(
+          "pointerdown",
+          () => {
+            if (
+              this.answerLocked
+            ) {
+              return;
+            }
+
+            this.answerLocked =
+              true;
+
+            this.answerBattleQuestion(
+              answer.correct,
+              attackButton,
+              defendButton,
+              updateBattleUI
+            );
+          }
+        );
+      }
+    );
+  }
+
+  // ==================================================
+  // ANSWER BATTLE QUESTION
+  // ==================================================
+
+  answerBattleQuestion(
+    isCorrect,
+    attackButton,
+    defendButton,
+    updateBattleUI
+  ) {
+    this.clearBattleQuestion();
+
+    this.isBattleQuestionOpen =
+      false;
+
+    this.answerLocked =
+      false;
+
+    if (
+      !this.currentMonster ||
+      this.currentMonster.isDead()
+    ) {
+      return;
+    }
+
+    // ==================================================
+    // CORRECT
+    // ==================================================
+
+    if (isCorrect) {
+      const attack =
+        this.getPlayerAttack();
+
+      // Bonus damage agar menjawab benar terasa rewarding
+      const damage =
+        Math.max(
+          10,
+          attack -
+            this.currentMonster.defense +
+            10
+        );
+
+      this.currentMonster.takeDamage(
+        damage
+      );
+
+      this.battleLogText.setText(
+        `✅ BENAR!\nKamu memberikan ${damage} damage!`
+      );
+
+      updateBattleUI();
+
+      // Monster defeated
+      if (
+        this.currentMonster.isDead()
+      ) {
+        attackButton.disableInteractive();
+        defendButton.disableInteractive();
+
+        this.handleVictory(
+          this.currentMonster,
+          updateBattleUI
+        );
+
+        return;
+      }
+
+      // Monster counter attack
+      attackButton.disableInteractive();
+      defendButton.disableInteractive();
+
+      this.time.delayedCall(
+        600,
+        () => {
+          if (
+            !this.isBattleOpen ||
+            !this.currentMonster ||
+            this.currentMonster.isDead()
+          ) {
+            return;
+          }
+
+          this.monsterAttack(
+            this.currentMonster,
+            updateBattleUI
+          );
+
+          if (
+            this.isBattleOpen &&
+            this.playerHP > 0 &&
+            !this.currentMonster.isDead()
+          ) {
+            attackButton.setInteractive({
+              useHandCursor: true,
+            });
+
+            defendButton.setInteractive({
+              useHandCursor: true,
+            });
+          }
+        }
+      );
+
+      return;
+    }
+
+    // ==================================================
+    // WRONG
+    // ==================================================
+
+    this.battleLogText.setText(
+      "❌ SALAH!\nKamu gagal menyerang."
+    );
+
+    attackButton.disableInteractive();
+    defendButton.disableInteractive();
+
+    this.time.delayedCall(
+      600,
+      () => {
+        if (
+          !this.isBattleOpen ||
+          !this.currentMonster ||
+          this.currentMonster.isDead()
+        ) {
+          return;
+        }
+
+        this.monsterAttack(
+          this.currentMonster,
+          updateBattleUI
+        );
+
+        if (
+          this.isBattleOpen &&
+          this.playerHP > 0 &&
+          !this.currentMonster.isDead()
+        ) {
+          attackButton.setInteractive({
+            useHandCursor: true,
+          });
+
+          defendButton.setInteractive({
+            useHandCursor: true,
+          });
+        }
+      }
+    );
+  }
+
+  // ==================================================
+  // CLEAR BATTLE QUESTION
+  // ==================================================
+
+  clearBattleQuestion() {
+    if (
+      !this.battleQuestionObjects
+    ) {
+      return;
+    }
+
+    this.battleQuestionObjects.forEach(
+      (object) => {
+        if (object) {
+          object.destroy();
+        }
+      }
+    );
+
+    this.battleQuestionObjects =
+      [];
+
+    this.currentBattleQuestion =
+      null;
   }
 
   // ==================================================
@@ -1563,7 +1965,7 @@ class VillageScene extends Phaser.Scene {
 
     updateBattleUI();
 
-    // Defeat
+    // Player defeated
     if (
       this.playerHP <= 0
     ) {
@@ -1594,9 +1996,7 @@ class VillageScene extends Phaser.Scene {
     this.time.delayedCall(
       700,
       () => {
-        if (
-          !this.isBattleOpen
-        ) {
+        if (!this.isBattleOpen) {
           return;
         }
 
@@ -1901,10 +2301,17 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   closeBattle() {
+    this.clearBattleQuestion();
     this.clearBattle();
 
     this.currentMonster =
       null;
+
+    this.currentBattleQuestion =
+      null;
+
+    this.isBattleQuestionOpen =
+      false;
 
     this.isDefending =
       false;
@@ -1969,151 +2376,6 @@ class VillageScene extends Phaser.Scene {
       ] || 0;
 
     return attack;
-  }
-
-  // ==================================================
-  // CREATE HUD
-  // ==================================================
-
-  createHUD() {
-    this.levelText =
-      this.add.text(
-        20,
-        15,
-        "",
-        {
-          fontSize: "18px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      );
-
-    this.goldText =
-      this.add.text(
-        620,
-        15,
-        "",
-        {
-          fontSize: "18px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      );
-
-    this.xpText =
-      this.add.text(
-        20,
-        42,
-        "",
-        {
-          fontSize: "14px",
-          color: "#ffffff",
-        }
-      );
-
-    this.xpBarBackground =
-      this.add.rectangle(
-        20,
-        68,
-        250,
-        16,
-        0x1a365d,
-        0.8
-      );
-
-    this.xpBarBackground.setOrigin(
-      0,
-      0.5
-    );
-
-    this.xpBarFill =
-      this.add.rectangle(
-        20,
-        68,
-        250,
-        16,
-        0xd4af37
-      );
-
-    this.xpBarFill.setOrigin(
-      0,
-      0.5
-    );
-  }
-
-  // ==================================================
-  // UPDATE HUD
-  // ==================================================
-
-  updateHUD() {
-    const level =
-      Number(
-        this.playerData.level
-      ) || 1;
-
-    const xp =
-      Number(
-        this.playerData.xp
-      ) || 0;
-
-    const gold =
-      Number(
-        this.playerData.gold
-      ) || 0;
-
-    this.playerData.level =
-      level;
-
-    this.playerData.xp =
-      xp;
-
-    this.playerData.gold =
-      gold;
-
-    this.levelText.setText(
-      `LVL ${level} — ${this.getLevelTitle(level)}`
-    );
-
-    this.goldText.setText(
-      `GOLD: ${gold}`
-    );
-
-    this.xpText.setText(
-      `XP ${xp} / ${this.xpNeeded}`
-    );
-
-    const percentage =
-      Phaser.Math.Clamp(
-        xp / this.xpNeeded,
-        0,
-        1
-      );
-
-    this.xpBarFill.setDisplaySize(
-      250 * percentage,
-      16
-    );
-  }
-
-  // ==================================================
-  // LEVEL TITLE
-  // ==================================================
-
-  getLevelTitle(
-    level
-  ) {
-    const titles = {
-      1: "طالب",
-      2: "Nahwu Explorer",
-      3: "Grammar Apprentice",
-      4: "Nahwu Warrior",
-      5: "Grammar Master",
-    };
-
-    return (
-      titles[level] ||
-      "Grammar Master"
-    );
   }
 
   // ==================================================
@@ -2881,7 +3143,8 @@ class VillageScene extends Phaser.Scene {
       `+${xpResult.finalXP} XP`;
 
     if (
-      xpResult.bonusXP > 0
+      xpResult.bonusXP >
+      0
     ) {
       message +=
         `\nEquipment Bonus: +${xpResult.bonusXP} XP`;
@@ -3202,10 +3465,6 @@ class VillageScene extends Phaser.Scene {
       402
     );
 
-    // ==================================================
-    // ACCEPT
-    // ==================================================
-
     const acceptButton =
       this.add.rectangle(
         620,
@@ -3267,10 +3526,6 @@ class VillageScene extends Phaser.Scene {
         );
       }
     );
-
-    // ==================================================
-    // NANTI
-    // ==================================================
 
     const closeButton =
       this.add.rectangle(
