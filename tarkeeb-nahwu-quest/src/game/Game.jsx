@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
+
 import VillageScene from "./scenes/VillageScene";
 
 function Game() {
@@ -34,6 +35,24 @@ function Game() {
         },
       },
 
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+
+        width: 800,
+        height: 600,
+
+        min: {
+          width: 640,
+          height: 480,
+        },
+
+        max: {
+          width: 1200,
+          height: 900,
+        },
+      },
+
       scene: [VillageScene],
     };
 
@@ -48,7 +67,21 @@ function Game() {
     };
   }, []);
 
-  return <div ref={gameRef}></div>;
+  return (
+    <div
+      ref={gameRef}
+      style={{
+        width: "100%",
+        height: "100vh",
+
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+
+        overflow: "hidden",
+      }}
+    />
+  );
 }
 
 export default Game;

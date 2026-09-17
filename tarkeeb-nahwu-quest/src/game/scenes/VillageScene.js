@@ -1469,19 +1469,47 @@ class VillageScene extends Phaser.Scene {
   getRandomBattleQuestion() {
     if (
       !battleQuestions ||
-      battleQuestions.length ===
-        0
+      battleQuestions.length === 0
     ) {
       return null;
+    }
+
+    let monsterDifficulty =
+      "Easy";
+
+    // Ambil difficulty monster
+    if (
+      this.currentMonster &&
+      this.currentMonster.difficulty
+    ) {
+      monsterDifficulty =
+        this.currentMonster.difficulty;
+    }
+
+    // Cari soal sesuai difficulty monster
+    let availableQuestions =
+      battleQuestions.filter(
+        (question) =>
+          question.difficulty ===
+          monsterDifficulty
+      );
+
+    // Kalau tidak ada soal sesuai difficulty,
+    // gunakan semua soal sebagai fallback.
+    if (
+      availableQuestions.length === 0
+    ) {
+      availableQuestions =
+        battleQuestions;
     }
 
     const index =
       Phaser.Math.Between(
         0,
-        battleQuestions.length - 1
+        availableQuestions.length - 1
       );
 
-    return battleQuestions[
+    return availableQuestions[
       index
     ];
   }
@@ -1762,13 +1790,17 @@ class VillageScene extends Phaser.Scene {
       const attack =
         this.getPlayerAttack();
 
-      // Bonus damage agar menjawab benar terasa rewarding
+      const questionDamage =
+        Number(
+          this.currentBattleQuestion.damage
+        ) || 20;
+
       const damage =
         Math.max(
-          10,
+          1,
           attack -
             this.currentMonster.defense +
-            10
+            questionDamage
         );
 
       this.currentMonster.takeDamage(
@@ -1776,7 +1808,9 @@ class VillageScene extends Phaser.Scene {
       );
 
       this.battleLogText.setText(
-        `✅ BENAR!\nKamu memberikan ${damage} damage!`
+        `✅ BENAR!\n` +
+          `Soal ${this.currentBattleQuestion.difficulty}\n` +
+          `⚔️ Damage: ${damage}`
       );
 
       updateBattleUI();
