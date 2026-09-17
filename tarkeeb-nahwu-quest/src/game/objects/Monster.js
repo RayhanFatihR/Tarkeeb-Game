@@ -40,6 +40,15 @@ class Monster {
         monsterData.defense
       ) || 5;
 
+    this.difficulty =
+      monsterData.difficulty ||
+      "Easy";
+
+    this.stars =
+      Number(
+        monsterData.stars
+      ) || 1;
+
     this.reward =
       monsterData.reward || {
         xp: 100,
@@ -138,6 +147,25 @@ class Monster {
     );
 
     // ==================================================
+    // DIFFICULTY
+    // ==================================================
+
+    this.difficultyText =
+      scene.add
+        .text(
+          x,
+          y + 55,
+          this.getDifficultyDisplay(),
+          {
+            fontSize: "11px",
+            color:
+              this.getDifficultyColor(),
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    // ==================================================
     // PHYSICS
     // ==================================================
 
@@ -180,6 +208,52 @@ class Monster {
   }
 
   // ==================================================
+  // DIFFICULTY DISPLAY
+  // ==================================================
+
+  getDifficultyDisplay() {
+    const filled =
+      "★".repeat(
+        this.stars
+      );
+
+    const empty =
+      "☆".repeat(
+        5 -
+          this.stars
+      );
+
+    return `${this.difficulty} ${filled}${empty}`;
+  }
+
+  // ==================================================
+  // DIFFICULTY COLOR
+  // ==================================================
+
+  getDifficultyColor() {
+    switch (
+      String(
+        this.difficulty
+      ).toLowerCase()
+    ) {
+      case "easy":
+        return "#68D391";
+
+      case "medium":
+        return "#ECC94B";
+
+      case "hard":
+        return "#FC8181";
+
+      case "boss":
+        return "#D6BCFA";
+
+      default:
+        return "#FFFFFF";
+    }
+  }
+
+  // ==================================================
   // UPDATE
   // ==================================================
 
@@ -210,7 +284,7 @@ class Monster {
         true;
 
       this.interactionText.setText(
-        "[ E ] Lawan Monster"
+        `[ E ] Lawan ${this.name}`
       );
 
       this.interactionText.setVisible(
@@ -238,7 +312,8 @@ class Monster {
       );
 
     this.hpBar.setDisplaySize(
-      60 * percentage,
+      60 *
+        percentage,
       8
     );
 
@@ -249,6 +324,11 @@ class Monster {
     this.nameText.setPosition(
       this.x,
       this.y + 38
+    );
+
+    this.difficultyText.setPosition(
+      this.x,
+      this.y + 55
     );
 
     this.hpBackground.setPosition(
@@ -346,6 +426,13 @@ class Monster {
     if (this.nameText) {
       this.nameText.destroy();
       this.nameText = null;
+    }
+
+    if (
+      this.difficultyText
+    ) {
+      this.difficultyText.destroy();
+      this.difficultyText = null;
     }
 
     if (
