@@ -4590,6 +4590,149 @@ class VillageScene extends Phaser.Scene {
     this.inventoryOpen =
       false;
   }
+
+  // ==================================================
+  // CREATE HUD
+  // ==================================================
+
+  createHUD() {
+    this.levelText =
+      this.add.text(
+        20,
+        15,
+        "",
+        {
+          fontSize: "18px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      );
+
+    this.goldText =
+      this.add.text(
+        620,
+        15,
+        "",
+        {
+          fontSize: "18px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      );
+
+    this.xpText =
+      this.add.text(
+        20,
+        42,
+        "",
+        {
+          fontSize: "14px",
+          color: "#ffffff",
+        }
+      );
+
+    this.xpBarBackground =
+      this.add.rectangle(
+        20,
+        68,
+        250,
+        16,
+        0x1a365d,
+        0.8
+      );
+
+    this.xpBarBackground.setOrigin(
+      0,
+      0.5
+    );
+
+    this.xpBarFill =
+      this.add.rectangle(
+        20,
+        68,
+        250,
+        16,
+        0xd4af37
+      );
+
+    this.xpBarFill.setOrigin(
+      0,
+      0.5
+    );
+  }
+
+  // ==================================================
+  // UPDATE HUD
+  // ==================================================
+
+  updateHUD() {
+    const level =
+      Number(
+        this.playerData.level
+      ) || 1;
+
+    const xp =
+      Number(
+        this.playerData.xp
+      ) || 0;
+
+    const gold =
+      Number(
+        this.playerData.gold
+      ) || 0;
+
+    this.playerData.level =
+      level;
+
+    this.playerData.xp =
+      xp;
+
+    this.playerData.gold =
+      gold;
+
+    this.levelText.setText(
+      `LVL ${level} — ${this.getLevelTitle(level)}`
+    );
+
+    this.goldText.setText(
+      `GOLD: ${gold}`
+    );
+
+    this.xpText.setText(
+      `XP ${xp} / ${this.xpNeeded}`
+    );
+
+    const percentage =
+      Phaser.Math.Clamp(
+        xp / this.xpNeeded,
+        0,
+        1
+      );
+
+    this.xpBarFill.setDisplaySize(
+      250 * percentage,
+      16
+    );
+  }
+
+  // ==================================================
+  // LEVEL TITLE
+  // ==================================================
+
+  getLevelTitle(level) {
+    const titles = {
+      1: "طالب",
+      2: "Nahwu Explorer",
+      3: "Grammar Apprentice",
+      4: "Nahwu Warrior",
+      5: "Grammar Master",
+    };
+
+    return (
+      titles[level] ||
+      "Grammar Master"
+    );
+  }
 }
 
 export default VillageScene;
