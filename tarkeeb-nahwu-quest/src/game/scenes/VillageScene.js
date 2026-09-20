@@ -227,6 +227,8 @@ class VillageScene extends Phaser.Scene {
 
     this.createWorld();
 
+    this.createForestGate();
+
     // ==================================================
     // PLAYER
     // ==================================================
@@ -350,13 +352,13 @@ class VillageScene extends Phaser.Scene {
 
     this.createHouse(
       180,
-      230,
+      220,
       "Nahwu House"
     );
 
     this.createHouse(
       620,
-      230,
+      220,
       "Grammar House"
     );
 
@@ -364,17 +366,14 @@ class VillageScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(80, 100);
+    this.createTree(70, 100);
+    this.createTree(500, 120);
 
-    this.createTree(720, 100);
+    this.createTree(70, 470);
+    this.createTree(300, 520);
 
-    this.createTree(80, 500);
-
-    this.createTree(720, 500);
-
-    this.createTree(150, 520);
-
-    this.createTree(650, 520);
+    this.createTree(520, 520);
+    this.createTree(720, 420);
 
     // ==================================================
     // CHESTS
@@ -383,20 +382,20 @@ class VillageScene extends Phaser.Scene {
     this.chests = [];
 
     this.createChest(
-      620,
-      420,
+      280,
+      400,
       items.swordOfIsim
     );
 
     this.createChest(
-      300,
-      500,
+      540,
+      410,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      720,
-      350,
+      690,
+      330,
       items.ringOfRafa
     );
 
@@ -413,7 +412,7 @@ class VillageScene extends Phaser.Scene {
     const slime =
       new Monster(
         this,
-        580,
+        600,
         500,
         monsters.nahwuSlime
       );
@@ -425,7 +424,7 @@ class VillageScene extends Phaser.Scene {
     const goblin =
       new Monster(
         this,
-        180,
+        150,
         500,
         monsters.grammarGoblin
       );
@@ -437,8 +436,8 @@ class VillageScene extends Phaser.Scene {
     const golem =
       new Monster(
         this,
-        700,
-        250,
+        320,
+        150,
         monsters.irabGolem
       );
 
@@ -447,7 +446,6 @@ class VillageScene extends Phaser.Scene {
       goblin,
       golem
     );
-  }
 
   // ==================================================
   // CREATE PLAYER
@@ -835,6 +833,138 @@ class VillageScene extends Phaser.Scene {
         this.grammarMaster.talk();
       }
     }
+
+    // ==================================================
+    // FOREST GATE
+    // ==================================================
+
+    if (
+      this.forestGate
+    ) {
+      const gateDistance =
+        Phaser.Math.Distance.Between(
+          this.player.x,
+          this.player.y,
+          this.forestGate.x,
+          this.forestGate.y
+        );
+
+      if (
+        gateDistance < 90
+      ) {
+        this.forestGatePrompt.setVisible(
+          true
+        );
+
+        this.interactText.setText(
+          "[ E ] Masuk Forest of Isim"
+        );
+
+        this.interactText.setVisible(
+          true
+        );
+
+        if (
+          Phaser.Input.Keyboard.JustDown(
+            this.interactKey
+          )
+        ) {
+          this.enterForest();
+          return;
+        }
+      } else {
+        this.forestGatePrompt.setVisible(
+          false
+        );
+      }
+    }
+
+  };
+
+  // ==================================================
+  // ENTER FOREST
+  // ==================================================
+
+  enterForest() {
+    if (
+      this.isBattleOpen ||
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen
+    ) {
+      return;
+    }
+
+    this.forestGatePrompt.setVisible(
+      false
+    );
+
+    this.interactText.setVisible(
+      false
+    );
+
+    this.scene.start(
+      "ForestScene"
+    );
+  }
+
+  // ==================================================
+  // CREATE FOREST GATE
+  // ==================================================
+
+  createForestGate() {
+    this.forestGate =
+      this.add.rectangle(
+        740,
+        300,
+        50,
+        110,
+        0x553c2e
+      );
+
+    this.forestGate.setStrokeStyle(
+      4,
+      0xd4af37
+    );
+
+    this.forestGateText =
+      this.add
+        .text(
+          740,
+          225,
+          "🌳 FOREST",
+          {
+            fontSize: "14px",
+            color: "#ffffff",
+            backgroundColor:
+              "#1A365D",
+            padding: 5,
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    this.forestGatePrompt =
+      this.add
+        .text(
+          740,
+          390,
+          "[ E ] Masuk Forest",
+          {
+            fontSize: "15px",
+            color: "#ffffff",
+            backgroundColor:
+              "#1A365D",
+            padding: 7,
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    this.forestGatePrompt.setVisible(
+      false
+    );
   }
 
   // ==================================================

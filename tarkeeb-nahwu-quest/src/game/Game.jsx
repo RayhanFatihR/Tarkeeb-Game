@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 
 import VillageScene from "./scenes/VillageScene";
+import ForestScene from "./scenes/ForestScene";
 
 function Game() {
   const gameRef = useRef(null);
@@ -53,7 +54,7 @@ function Game() {
         },
       },
 
-      scene: [VillageScene],
+      scene: [VillageScene, ForestScene],
     };
 
     gameInstance.current =
