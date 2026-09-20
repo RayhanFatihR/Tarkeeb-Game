@@ -242,8 +242,8 @@ class VillageScene extends Phaser.Scene {
     this.grammarMaster =
       new NPC(
         this,
-        250,
-        420,
+        180,
+        390,
         "Grammar Master"
       );
 
@@ -351,7 +351,7 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
 
     this.createHouse(
-      180,
+      170,
       220,
       "Nahwu House"
     );
@@ -366,14 +366,17 @@ class VillageScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(70, 100);
-    this.createTree(500, 120);
+    this.createTree(70, 90);
 
-    this.createTree(70, 470);
+    this.createTree(750, 90);
+
+    this.createTree(70, 500);
+
     this.createTree(300, 520);
 
     this.createTree(520, 520);
-    this.createTree(720, 420);
+
+    this.createTree(750, 450);
 
     // ==================================================
     // CHESTS
@@ -382,20 +385,20 @@ class VillageScene extends Phaser.Scene {
     this.chests = [];
 
     this.createChest(
-      280,
-      400,
+      300,
+      410,
       items.swordOfIsim
     );
 
     this.createChest(
-      540,
-      410,
+      520,
+      420,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      690,
-      330,
+      700,
+      350,
       items.ringOfRafa
     );
 
@@ -424,7 +427,7 @@ class VillageScene extends Phaser.Scene {
     const goblin =
       new Monster(
         this,
-        150,
+        145,
         500,
         monsters.grammarGoblin
       );
@@ -436,8 +439,8 @@ class VillageScene extends Phaser.Scene {
     const golem =
       new Monster(
         this,
-        320,
-        150,
+        330,
+        160,
         monsters.irabGolem
       );
 
@@ -446,6 +449,7 @@ class VillageScene extends Phaser.Scene {
       goblin,
       golem
     );
+  }
 
   // ==================================================
   // CREATE PLAYER
@@ -833,6 +837,7 @@ class VillageScene extends Phaser.Scene {
         this.grammarMaster.talk();
       }
     }
+  }
 
     // ==================================================
     // FOREST GATE
@@ -879,8 +884,6 @@ class VillageScene extends Phaser.Scene {
       }
     }
 
-  };
-
   // ==================================================
   // ENTER FOREST
   // ==================================================
@@ -917,7 +920,7 @@ class VillageScene extends Phaser.Scene {
     this.forestGate =
       this.add.rectangle(
         740,
-        300,
+        170,
         50,
         110,
         0x553c2e
@@ -932,7 +935,7 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           740,
-          225,
+          95,
           "🌳 FOREST",
           {
             fontSize: "14px",
@@ -949,7 +952,7 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           740,
-          390,
+          255,
           "[ E ] Masuk Forest",
           {
             fontSize: "15px",
