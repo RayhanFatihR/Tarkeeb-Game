@@ -8,8 +8,6 @@ import questions from "../data/questions";
 import items from "../data/items";
 import monsters from "../data/monsters";
 import battleQuestions from "../data/battleQuestions";
-import skills from "../data/skills";
-import skillQuestions from "../data/skillQuestions";
 
 class VillageScene extends Phaser.Scene {
   constructor() {
@@ -168,24 +166,6 @@ class VillageScene extends Phaser.Scene {
 
     this.currentBattleQuestion =
       null;
-
-    // ==================================================
-    // SKILL SYSTEM
-    // ==================================================
-
-    this.skillMenuOpen = false;
-
-    this.skillQuestionOpen = false;
-
-    this.skillQuestionObjects = [];
-
-    this.currentSkill = null;
-
-    this.currentSkillQuestion = null;
-
-    this.activeShieldTurns = 0;
-
-    this.battleSkillButton = null;
 
     // ==================================================
     // BATTLE STATS
@@ -923,24 +903,6 @@ class VillageScene extends Phaser.Scene {
 
     this.battleComboText = null;
 
-    // ==================================================
-    // RESET SKILL
-    // ==================================================
-
-    this.skillMenuOpen = false;
-
-    this.skillQuestionOpen = false;
-
-    this.skillQuestionObjects = [];
-
-    this.currentSkill = null;
-
-    this.currentSkillQuestion = null;
-
-    this.activeShieldTurns = 0;
-
-    this.battleSkillButton = null;
-
     // Hide interaction
     this.interactText.setVisible(
       false
@@ -1242,9 +1204,9 @@ class VillageScene extends Phaser.Scene {
 
     const attackButton =
       this.add.rectangle(
-        200,
+        300,
         465,
-        170,
+        200,
         55,
         0xc53030
       );
@@ -1258,11 +1220,11 @@ class VillageScene extends Phaser.Scene {
     const attackText =
       this.add
         .text(
-          200,
+          300,
           465,
           "⚔️ SERANG",
           {
-            fontSize: "17px",
+            fontSize: "19px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1272,52 +1234,14 @@ class VillageScene extends Phaser.Scene {
     attackText.setDepth(603);
 
     // ==================================================
-    // SKILL
-    // ==================================================
-
-    const skillButton =
-      this.add.rectangle(
-        400,
-        465,
-        170,
-        55,
-        0x718096
-      );
-
-    skillButton.setDepth(602);
-
-    skillButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const skillText =
-      this.add
-        .text(
-          400,
-          465,
-          "✨ SKILL",
-          {
-            fontSize: "17px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    skillText.setDepth(603);
-
-    this.battleSkillButton =
-      skillButton;
-
-    // ==================================================
     // DEFEND
     // ==================================================
 
     const defendButton =
       this.add.rectangle(
-        600,
+        500,
         465,
-        170,
+        200,
         55,
         0x3182ce
       );
@@ -1331,7 +1255,7 @@ class VillageScene extends Phaser.Scene {
     const defendText =
       this.add
         .text(
-          600,
+          500,
           465,
           "🛡️ BERTAHAN",
           {
@@ -1343,70 +1267,6 @@ class VillageScene extends Phaser.Scene {
         .setOrigin(0.5);
 
     defendText.setDepth(603);
-
-    // ==================================================
-    // SKILL BUTTON
-    // ==================================================
-
-    skillButton.on(
-      "pointerdown",
-      () => {
-        if (
-          !this.isBattleOpen ||
-          !monster ||
-          monster.isDead()
-        ) {
-          return;
-        }
-
-        this.showSkillMenu(
-          attackButton,
-          skillButton,
-          defendButton,
-          updateBattleUI
-        );
-      }
-    );
-
-    // ==================================================
-    // HOVER SKILL
-    // ==================================================
-
-    skillButton.on(
-      "pointerover",
-      () => {
-        if (this.isBattleQuestionOpen) {
-          return;
-        }
-
-        if (
-          this.battleCombo >=
-          skills.powerStrike.requiredCombo
-        ) {
-          skillButton.setFillStyle(
-            0x9f7aea
-          );
-        }
-      }
-    );
-
-    skillButton.on(
-      "pointerout",
-      () => {
-        if (
-          this.battleCombo >=
-          skills.powerStrike.requiredCombo
-        ) {
-          skillButton.setFillStyle(
-            0x805ad5
-          );
-        } else {
-          skillButton.setFillStyle(
-            0x718096
-          );
-        }
-      }
-    );
 
     // ==================================================
     // EXIT
@@ -1505,21 +1365,6 @@ class VillageScene extends Phaser.Scene {
             `COMBO x${this.battleCombo}`
           );
         }
-
-        if (this.battleSkillButton) {
-          if (
-            this.battleCombo >=
-            skills.powerStrike.requiredCombo
-          ) {
-            this.battleSkillButton.setFillStyle(
-              0x805ad5
-            );
-          } else {
-            this.battleSkillButton.setFillStyle(
-              0x718096
-            );
-          }
-        }
       };
 
     updateBattleUI();
@@ -1541,7 +1386,6 @@ class VillageScene extends Phaser.Scene {
 
         this.openBattleQuestion(
           attackButton,
-          skillButton,
           defendButton,
           updateBattleUI
         );
@@ -1567,8 +1411,6 @@ class VillageScene extends Phaser.Scene {
           true;
 
         attackButton.disableInteractive();
-
-        skillButton.disableInteractive();
 
         defendButton.disableInteractive();
 
@@ -1598,10 +1440,6 @@ class VillageScene extends Phaser.Scene {
               !monster.isDead()
             ) {
               attackButton.setInteractive({
-                useHandCursor: true,
-              });
-
-              skillButton.setInteractive({
                 useHandCursor: true,
               });
 
@@ -1709,9 +1547,6 @@ class VillageScene extends Phaser.Scene {
       attackButton,
       attackText,
 
-      skillButton,
-      skillText,
-
       defendButton,
       defendText,
 
@@ -1726,7 +1561,6 @@ class VillageScene extends Phaser.Scene {
 
   openBattleQuestion(
     attackButton,
-    skillButton,
     defendButton,
     updateBattleUI
   ) {
@@ -1760,13 +1594,10 @@ class VillageScene extends Phaser.Scene {
 
     attackButton.disableInteractive();
 
-    skillButton.disableInteractive();
-
     defendButton.disableInteractive();
 
     this.showBattleQuestion(
       attackButton,
-      skillButton,
       defendButton,
       updateBattleUI
     );
@@ -1828,7 +1659,6 @@ class VillageScene extends Phaser.Scene {
 
   showBattleQuestion(
     attackButton,
-    skillButton,
     defendButton,
     updateBattleUI
   ) {
@@ -2070,7 +1900,6 @@ class VillageScene extends Phaser.Scene {
             this.answerBattleQuestion(
               answer.correct,
               attackButton,
-              skillButton,
               defendButton,
               updateBattleUI
             );
@@ -2087,7 +1916,6 @@ class VillageScene extends Phaser.Scene {
   answerBattleQuestion(
     isCorrect,
     attackButton,
-    skillButton,
     defendButton,
     updateBattleUI
   ) {
@@ -2263,8 +2091,6 @@ class VillageScene extends Phaser.Scene {
 
       attackButton.disableInteractive();
 
-      skillButton.disableInteractive();
-
       defendButton.disableInteractive();
 
       this.time.delayedCall(
@@ -2289,10 +2115,6 @@ class VillageScene extends Phaser.Scene {
             !this.currentMonster.isDead()
           ) {
             attackButton.setInteractive({
-              useHandCursor: true,
-            });
-
-            skillButton.setInteractive({
               useHandCursor: true,
             });
 
@@ -2360,874 +2182,12 @@ class VillageScene extends Phaser.Scene {
             useHandCursor: true,
           });
 
-          skillButton.setInteractive({
-            useHandCursor: true,
-          });
-
           defendButton.setInteractive({
             useHandCursor: true,
           });
         }
       }
     );
-  }
-
-  // ==================================================
-  // SKILL MENU
-  // ==================================================
-
-  showSkillMenu(
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    if (
-      this.skillMenuOpen ||
-      !this.isBattleOpen ||
-      this.isBattleQuestionOpen
-    ) {
-      return;
-    }
-
-    const requiredCombo =
-      skills.powerStrike.requiredCombo;
-
-    if (
-      this.battleCombo <
-      requiredCombo
-    ) {
-      this.battleLogText.setText(
-        `⚠️ Skill membutuhkan Combo x${requiredCombo}!`
-      );
-
-      return;
-    }
-
-    this.skillMenuOpen = true;
-
-    this.skillObjects = [];
-
-    attackButton.disableInteractive();
-    skillButton.disableInteractive();
-    defendButton.disableInteractive();
-
-    const overlay =
-      this.add.rectangle(
-        400,
-        360,
-        560,
-        245,
-        0x111827,
-        0.98
-      );
-
-    overlay.setDepth(900);
-
-    overlay.setInteractive();
-
-    const title =
-      this.add
-        .text(
-          400,
-          270,
-          "✨ SKILL MENU",
-          {
-            fontSize: "25px",
-            color: "#D4AF37",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    title.setDepth(901);
-
-    const powerButton =
-      this.add.rectangle(
-        400,
-        330,
-        440,
-        48,
-        0x805ad5
-      );
-
-    powerButton.setDepth(901);
-    powerButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const powerText =
-      this.add
-        .text(
-          400,
-          330,
-          "✨ Power Strike  •  Combo x2",
-          {
-            fontSize: "17px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    powerText.setDepth(902);
-
-    const shieldButton =
-      this.add.rectangle(
-        400,
-        390,
-        440,
-        48,
-        0x3182ce
-      );
-
-    shieldButton.setDepth(901);
-    shieldButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const shieldText =
-      this.add
-        .text(
-          400,
-          390,
-          "🛡️ Grammar Shield  •  Combo x2",
-          {
-            fontSize: "17px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    shieldText.setDepth(902);
-
-    const closeButton =
-      this.add.rectangle(
-        400,
-        450,
-        150,
-        38,
-        0x4a5568
-      );
-
-    closeButton.setDepth(901);
-    closeButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const closeText =
-      this.add
-        .text(
-          400,
-          450,
-          "BATAL",
-          {
-            fontSize: "15px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    closeText.setDepth(902);
-
-    this.skillObjects.push(
-      overlay,
-      title,
-      powerButton,
-      powerText,
-      shieldButton,
-      shieldText,
-      closeButton,
-      closeText
-    );
-
-    powerButton.on(
-      "pointerdown",
-      () => {
-        this.openSkillQuestion(
-          "powerStrike",
-          attackButton,
-          skillButton,
-          defendButton,
-          updateBattleUI
-        );
-      }
-    );
-
-    shieldButton.on(
-      "pointerdown",
-      () => {
-        this.openSkillQuestion(
-          "grammarShield",
-          attackButton,
-          skillButton,
-          defendButton,
-          updateBattleUI
-        );
-      }
-    );
-
-    closeButton.on(
-      "pointerdown",
-      () => {
-        this.closeSkillMenu(
-          attackButton,
-          skillButton,
-          defendButton
-        );
-      }
-    );
-  }
-
-  // ==================================================
-  // CLOSE SKILL MENU
-  // ==================================================
-
-  closeSkillMenu(
-    attackButton,
-    skillButton,
-    defendButton
-  ) {
-    this.skillObjects.forEach(
-      (object) => {
-        if (object) {
-          object.destroy();
-        }
-      }
-    );
-
-    this.skillObjects = [];
-
-    this.skillMenuOpen = false;
-
-    if (
-      this.isBattleOpen &&
-      !this.isBattleQuestionOpen &&
-      this.currentMonster &&
-      !this.currentMonster.isDead()
-    ) {
-      attackButton.setInteractive({
-        useHandCursor: true,
-      });
-
-      skillButton.setInteractive({
-        useHandCursor: true,
-      });
-
-      defendButton.setInteractive({
-        useHandCursor: true,
-      });
-    }
-  }
-
-  // ==================================================
-  // OPEN SKILL QUESTION
-  // ==================================================
-
-  openSkillQuestion(
-    skillId,
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    if (
-      !this.isBattleOpen ||
-      !this.currentMonster ||
-      this.currentMonster.isDead()
-    ) {
-      return;
-    }
-
-    if (
-      this.battleCombo <
-      skills[skillId].requiredCombo
-    ) {
-      this.battleLogText.setText(
-        `⚠️ ${skills[skillId].name} membutuhkan Combo x${skills[skillId].requiredCombo}!`
-      );
-
-      return;
-    }
-
-    const availableQuestions =
-      skillQuestions.filter(
-        (question) =>
-          question.skill === skillId
-      );
-
-    if (
-      availableQuestions.length === 0
-    ) {
-      this.battleLogText.setText(
-        "⚠️ Soal skill belum tersedia."
-      );
-
-      return;
-    }
-
-    this.closeSkillMenu(
-      attackButton,
-      skillButton,
-      defendButton
-    );
-
-    attackButton.disableInteractive();
-    skillButton.disableInteractive();
-    defendButton.disableInteractive();
-
-    this.currentSkill =
-      skillId;
-
-    this.currentSkillQuestion =
-      availableQuestions[
-        Phaser.Math.Between(
-          0,
-          availableQuestions.length - 1
-        )
-      ];
-
-    this.skillQuestionOpen =
-      true;
-
-    this.answerLocked = false;
-
-    this.showSkillQuestion(
-      attackButton,
-      skillButton,
-      defendButton,
-      updateBattleUI
-    );
-  }
-
-  // ==================================================
-  // SHOW SKILL QUESTION
-  // ==================================================
-
-  showSkillQuestion(
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    const question =
-      this.currentSkillQuestion;
-
-    if (!question) {
-      return;
-    }
-
-    this.skillQuestionObjects = [];
-
-    const overlay =
-      this.add.rectangle(
-        400,
-        300,
-        800,
-        600,
-        0x000000,
-        0.82
-      );
-
-    overlay.setDepth(1000);
-
-    overlay.setInteractive();
-
-    const panel =
-      this.add.rectangle(
-        400,
-        300,
-        650,
-        470,
-        0xffffff
-      );
-
-    panel.setDepth(1001);
-
-    const skill =
-      skills[this.currentSkill];
-
-    const title =
-      this.add
-        .text(
-          400,
-          85,
-          `${skill.icon} ${skill.name}`,
-          {
-            fontSize: "30px",
-            color: "#805ad5",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    title.setDepth(1002);
-
-    const info =
-      this.add
-        .text(
-          400,
-          125,
-          "Jawab dengan benar untuk menggunakan skill!",
-          {
-            fontSize: "15px",
-            color: "#718096",
-            fontStyle: "italic",
-          }
-        )
-        .setOrigin(0.5);
-
-    info.setDepth(1002);
-
-    const questionText =
-      this.add
-        .text(
-          400,
-          215,
-          question.question,
-          {
-            fontSize: "22px",
-            color: "#2D3748",
-            fontStyle: "bold",
-            align: "center",
-            wordWrap: {
-              width: 540,
-            },
-          }
-        )
-        .setOrigin(0.5);
-
-    questionText.setDepth(1002);
-
-    this.skillQuestionObjects.push(
-      overlay,
-      panel,
-      title,
-      info,
-      questionText
-    );
-
-    question.answers.forEach(
-      (answer, index) => {
-        const y =
-          300 + index * 58;
-
-        const button =
-          this.add.rectangle(
-            400,
-            y,
-            500,
-            44,
-            0xeaf2ff
-          );
-
-        button.setDepth(1002);
-        button.setInteractive({
-          useHandCursor: true,
-        });
-
-        const answerText =
-          this.add
-            .text(
-              400,
-              y,
-              answer.text,
-              {
-                fontSize: "17px",
-                color: "#1A365D",
-                fontStyle: "bold",
-              }
-            )
-            .setOrigin(0.5);
-
-        answerText.setDepth(1003);
-
-        this.skillQuestionObjects.push(
-          button,
-          answerText
-        );
-
-        button.on(
-          "pointerover",
-          () => {
-            if (this.answerLocked) {
-              return;
-            }
-
-            button.setFillStyle(
-              0x3182ce
-            );
-
-            answerText.setColor(
-              "#ffffff"
-            );
-          }
-        );
-
-        button.on(
-          "pointerout",
-          () => {
-            if (this.answerLocked) {
-              return;
-            }
-
-            button.setFillStyle(
-              0xeaf2ff
-            );
-
-            answerText.setColor(
-              "#1A365D"
-            );
-          }
-        );
-
-        button.on(
-          "pointerdown",
-          () => {
-            if (this.answerLocked) {
-              return;
-            }
-
-            this.answerLocked = true;
-
-            this.answerSkillQuestion(
-              answer.correct,
-              attackButton,
-              skillButton,
-              defendButton,
-              updateBattleUI
-            );
-          }
-        );
-      }
-    );
-  }
-
-  // ==================================================
-  // ANSWER SKILL QUESTION
-  // ==================================================
-
-  answerSkillQuestion(
-    isCorrect,
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    const skillId =
-      this.currentSkill;
-
-    const skillQuestion =
-      this.currentSkillQuestion;
-
-    this.clearSkillQuestion();
-
-    this.skillQuestionOpen =
-      false;
-
-    this.answerLocked = false;
-
-    if (
-      !this.currentMonster ||
-      this.currentMonster.isDead()
-    ) {
-      return;
-    }
-
-    // ================================================
-    // SALAH
-    // ================================================
-
-    if (!isCorrect) {
-      this.battleCombo = 0;
-
-      if (this.battleComboText) {
-        this.battleComboText.setText(
-          "COMBO x0"
-        );
-      }
-
-      this.battleLogText.setText(
-        `❌ SALAH!\n${skills[skillId].name} gagal digunakan.\nCombo kembali x0.`
-      );
-
-      attackButton.disableInteractive();
-      skillButton.disableInteractive();
-      defendButton.disableInteractive();
-
-      this.time.delayedCall(
-        600,
-        () => {
-          if (
-            !this.isBattleOpen ||
-            !this.currentMonster ||
-            this.currentMonster.isDead()
-          ) {
-            return;
-          }
-
-          this.monsterAttack(
-            this.currentMonster,
-            updateBattleUI
-          );
-
-          if (
-            this.isBattleOpen &&
-            this.playerHP > 0 &&
-            !this.currentMonster.isDead()
-          ) {
-            attackButton.setInteractive({
-              useHandCursor: true,
-            });
-
-            skillButton.setInteractive({
-              useHandCursor: true,
-            });
-
-            defendButton.setInteractive({
-              useHandCursor: true,
-            });
-          }
-        }
-      );
-
-      return;
-    }
-
-    // ================================================
-    // BENAR
-    // ================================================
-
-    this.battleCombo =
-      Math.max(
-        0,
-        this.battleCombo -
-          skills[skillId].requiredCombo
-      );
-
-    updateBattleUI();
-
-    if (skillQuestion) {
-      this.battleLogText.setText(
-        `✅ BENAR!\n${skillQuestion.difficulty}\n✨ ${skills[skillId].name} aktif!`
-      );
-    }
-
-    // ================================================
-    // POWER STRIKE
-    // ================================================
-
-    if (
-      skillId ===
-      "powerStrike"
-    ) {
-      this.executePowerStrike(
-        attackButton,
-        skillButton,
-        defendButton,
-        updateBattleUI
-      );
-
-      return;
-    }
-
-    // ================================================
-    // GRAMMAR SHIELD
-    // ================================================
-
-    if (
-      skillId ===
-      "grammarShield"
-    ) {
-      this.executeGrammarShield(
-        attackButton,
-        skillButton,
-        defendButton,
-        updateBattleUI
-      );
-    }
-  }
-
-  // ==================================================
-  // EXECUTE POWER STRIKE
-  // ==================================================
-
-  executePowerStrike(
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    const baseDamage =
-      Math.max(
-        1,
-        this.getPlayerAttack() -
-          this.currentMonster.defense
-      );
-
-    const damage =
-      Math.floor(
-        baseDamage *
-          skills.powerStrike
-            .damageMultiplier
-      );
-
-    this.currentMonster.takeDamage(
-      damage
-    );
-
-    this.battleLogText.setText(
-      `✨ POWER STRIKE!\n⚔️ Damage: ${damage}`
-    );
-
-    this.showDamagePopup(
-      damage,
-      true
-    );
-
-    updateBattleUI();
-
-    if (
-      this.currentMonster.isDead()
-    ) {
-      attackButton.disableInteractive();
-      skillButton.disableInteractive();
-      defendButton.disableInteractive();
-
-      this.handleVictory(
-        this.currentMonster,
-        updateBattleUI
-      );
-
-      return;
-    }
-
-    attackButton.disableInteractive();
-    skillButton.disableInteractive();
-    defendButton.disableInteractive();
-
-    this.time.delayedCall(
-      600,
-      () => {
-        if (
-          !this.isBattleOpen ||
-          !this.currentMonster
-        ) {
-          return;
-        }
-
-        this.monsterAttack(
-          this.currentMonster,
-          updateBattleUI
-        );
-
-        if (
-          this.isBattleOpen &&
-          this.playerHP > 0 &&
-          !this.currentMonster.isDead()
-        ) {
-          attackButton.setInteractive({
-            useHandCursor: true,
-          });
-
-          skillButton.setInteractive({
-            useHandCursor: true,
-          });
-
-          defendButton.setInteractive({
-            useHandCursor: true,
-          });
-        }
-      }
-    );
-  }
-
-  // ==================================================
-  // EXECUTE GRAMMAR SHIELD
-  // ==================================================
-
-  executeGrammarShield(
-    attackButton,
-    skillButton,
-    defendButton,
-    updateBattleUI
-  ) {
-    this.activeShieldTurns =
-      1;
-
-    this.battleLogText.setText(
-      "🛡️ GRAMMAR SHIELD AKTIF!\nDamage monster berikutnya -50%."
-    );
-
-    updateBattleUI();
-
-    attackButton.disableInteractive();
-    skillButton.disableInteractive();
-    defendButton.disableInteractive();
-
-    this.time.delayedCall(
-      600,
-      () => {
-        if (
-          !this.isBattleOpen ||
-          !this.currentMonster ||
-          this.currentMonster.isDead()
-        ) {
-          return;
-        }
-
-        this.monsterAttack(
-          this.currentMonster,
-          updateBattleUI
-        );
-
-        if (
-          this.isBattleOpen &&
-          this.playerHP > 0 &&
-          !this.currentMonster.isDead()
-        ) {
-          attackButton.setInteractive({
-            useHandCursor: true,
-          });
-
-          skillButton.setInteractive({
-            useHandCursor: true,
-          });
-
-          defendButton.setInteractive({
-            useHandCursor: true,
-          });
-        }
-      }
-    );
-  }
-
-  // ==================================================
-  // CLEAR SKILL QUESTION
-  // ==================================================
-
-  clearSkillQuestion() {
-    if (
-      this.skillQuestionObjects
-    ) {
-      this.skillQuestionObjects.forEach(
-        (object) => {
-          if (object) {
-            object.destroy();
-          }
-        }
-      );
-    }
-
-    this.skillQuestionObjects = [];
-
-    this.currentSkillQuestion =
-      null;
-
-    this.currentSkill =
-      null;
   }
 
   // ==================================================
@@ -3343,20 +2303,6 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
     // DEFEND
     // ==================================================
-
-    if (
-      this.activeShieldTurns > 0
-    ) {
-      damage =
-        Math.max(
-          1,
-          Math.floor(
-            damage * skills.grammarShield.damageReduction
-          )
-        );
-
-      this.activeShieldTurns -= 1;
-    }
 
     if (
       this.isDefending
@@ -3745,24 +2691,6 @@ class VillageScene extends Phaser.Scene {
         this.battleComboText =
           null;
 
-        this.skillMenuOpen =
-          false;
-
-        this.skillQuestionOpen =
-          false;
-
-        this.currentSkill =
-          null;
-
-        this.currentSkillQuestion =
-          null;
-
-        this.activeShieldTurns =
-          0;
-
-        this.battleSkillButton =
-          null;
-
         this.interactText.setVisible(
           false
         );
@@ -3775,20 +2703,6 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   clearBattle() {
-    this.clearSkillQuestion();
-
-    if (this.skillObjects) {
-      this.skillObjects.forEach(
-        (object) => {
-          if (object) {
-            object.destroy();
-          }
-        }
-      );
-
-      this.skillObjects = [];
-    }
-
     if (
       !this.battleObjects
     ) {
@@ -3816,27 +2730,6 @@ class VillageScene extends Phaser.Scene {
       null;
 
     this.battleComboText =
-      null;
-
-    this.skillObjects =
-      [];
-
-    this.skillMenuOpen =
-      false;
-
-    this.skillQuestionOpen =
-      false;
-
-    this.currentSkill =
-      null;
-
-    this.currentSkillQuestion =
-      null;
-
-    this.activeShieldTurns =
-      0;
-
-    this.battleSkillButton =
       null;
   }
 
@@ -3875,24 +2768,6 @@ class VillageScene extends Phaser.Scene {
 
     this.battleMaxCombo =
       0;
-
-    this.skillMenuOpen =
-      false;
-
-    this.skillQuestionOpen =
-      false;
-
-    this.currentSkill =
-      null;
-
-    this.currentSkillQuestion =
-      null;
-
-    this.activeShieldTurns =
-      0;
-
-    this.battleSkillButton =
-      null;
   }
 
   // ==================================================
