@@ -14,8 +14,7 @@ class ForestScene extends Phaser.Scene {
     // PLAYER DATA
     // ==================================================
 
-    let savedData =
-      this.registry.get("playerData");
+    let savedData = this.registry.get("playerData");
 
     if (!savedData) {
       savedData = {
@@ -30,10 +29,7 @@ class ForestScene extends Phaser.Scene {
         },
       };
 
-      this.registry.set(
-        "playerData",
-        savedData
-      );
+      this.registry.set("playerData", savedData);
     }
 
     this.playerData = savedData;
@@ -43,13 +39,11 @@ class ForestScene extends Phaser.Scene {
     // ==================================================
 
     this.isTransitioning = false;
+    this.obstacles = this.physics.add.staticGroup();
 
-    // ==================================================
-    // OBJECT
-    // ==================================================
-
-    this.obstacles =
-      this.physics.add.staticGroup();
+    this.interactKey = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.E
+    );
 
     // ==================================================
     // WORLD
@@ -64,30 +58,10 @@ class ForestScene extends Phaser.Scene {
     this.createPlayer();
 
     // ==================================================
-    // GATE
+    // VILLAGE GATE
     // ==================================================
 
     this.createVillageGate();
-
-    // ==================================================
-    // INPUT
-    // ==================================================
-
-    this.keys =
-      this.input.keyboard.addKeys({
-        up: "W",
-        down: "S",
-        left: "A",
-        right: "D",
-      });
-
-    this.cursors =
-      this.input.keyboard.createCursorKeys();
-
-    this.interactKey =
-      this.input.keyboard.addKey(
-        Phaser.Input.Keyboard.KeyCodes.E
-      );
 
     // ==================================================
     // HUD
@@ -115,7 +89,7 @@ class ForestScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // PATH
+    // MAIN PATH
     // ==================================================
 
     this.add.rectangle(
@@ -125,10 +99,6 @@ class ForestScene extends Phaser.Scene {
       600,
       0xb8a27a
     );
-
-    // ==================================================
-    // SECONDARY PATH
-    // ==================================================
 
     this.add.rectangle(
       400,
@@ -145,10 +115,10 @@ class ForestScene extends Phaser.Scene {
     this.add
       .text(
         400,
-        95,
+        75,
         "FOREST OF ISIM",
         {
-          fontSize: "32px",
+          fontSize: "30px",
           color: "#ffffff",
           fontStyle: "bold",
         }
@@ -159,7 +129,7 @@ class ForestScene extends Phaser.Scene {
     this.add
       .text(
         400,
-        130,
+        112,
         "Hutan tempat para penjaga Isim berlatih.",
         {
           fontSize: "15px",
@@ -174,129 +144,48 @@ class ForestScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(70, 100);
-    this.createTree(170, 150);
-    this.createTree(730, 100);
-    this.createTree(620, 160);
+    this.createTree(80, 90);
+    this.createTree(250, 110);
+    this.createTree(530, 110);
+    this.createTree(720, 90);
 
-    this.createTree(80, 500);
-    this.createTree(180, 450);
-    this.createTree(720, 500);
-    this.createTree(620, 450);
+    this.createTree(85, 470);
+    this.createTree(250, 520);
+    this.createTree(560, 520);
+    this.createTree(720, 470);
 
-    this.createTree(100, 300);
-    this.createTree(700, 300);
+    this.createTree(150, 270);
+    this.createTree(650, 270);
 
     // ==================================================
-    // DECORATIVE ROCKS
+    // ROCKS
     // ==================================================
 
-    this.createRock(250, 150);
-    this.createRock(550, 150);
-    this.createRock(250, 500);
-    this.createRock(550, 500);
-  }
+    this.createRock(175, 175);
+    this.createRock(625, 175);
+    this.createRock(165, 400);
+    this.createRock(640, 410);
 
-  // ==================================================
-  // CREATE TREE
-  // ==================================================
+    // ==================================================
+    // SMALL FOREST DETAILS
+    // ==================================================
 
-  createTree(x, y) {
-    // Batang
+    this.createBush(320, 150);
+    this.createBush(470, 150);
+    this.createBush(320, 500);
+    this.createBush(470, 500);
 
-    this.add.rectangle(
-      x,
-      y + 30,
-      18,
-      45,
-      0x744210
-    );
+    // ==================================================
+    // COLLISION WALLS AT MAP EDGE
+    // ==================================================
 
-    // Daun utama
+    this.createWall(20, 300, 40, 600);
+    this.createWall(780, 300, 40, 600);
+    this.createWall(400, 15, 800, 30);
 
-    this.add.circle(
-      x,
-      y,
-      32,
-      0x22543d
-    );
-
-    // Daun kiri
-
-    this.add.circle(
-      x - 20,
-      y + 8,
-      23,
-      0x276749
-    );
-
-    // Daun kanan
-
-    this.add.circle(
-      x + 20,
-      y + 8,
-      23,
-      0x2f855a
-    );
-
-    // Collider
-
-    const collider =
-      this.add.rectangle(
-        x,
-        y + 15,
-        55,
-        70,
-        0xffffff,
-        0
-      );
-
-    this.physics.add.existing(
-      collider,
-      true
-    );
-
-    this.obstacles.add(
-      collider
-    );
-  }
-
-  // ==================================================
-  // CREATE ROCK
-  // ==================================================
-
-  createRock(x, y) {
-    const rock =
-      this.add.circle(
-        x,
-        y,
-        15,
-        0x718096
-      );
-
-    rock.setStrokeStyle(
-      2,
-      0x4a5568
-    );
-
-    const collider =
-      this.add.rectangle(
-        x,
-        y,
-        32,
-        32,
-        0xffffff,
-        0
-      );
-
-    this.physics.add.existing(
-      collider,
-      true
-    );
-
-    this.obstacles.add(
-      collider
-    );
+    // Bottom edge is left open at the village gate.
+    this.createWall(20, 585, 320, 30);
+    this.createWall(780, 585, 320, 30);
   }
 
   // ==================================================
@@ -304,72 +193,75 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createPlayer() {
-    this.player =
-      this.add.circle(
-        400,
-        390,
-        25,
-        0x3182ce
-      );
-
-    this.physics.add.existing(
-      this.player
+    this.player = this.add.circle(
+      400,
+      470,
+      25,
+      0x3182ce
     );
 
-    this.player.body.setCollideWorldBounds(
-      true
-    );
+    this.physics.add.existing(this.player);
+
+    this.player.body.setCollideWorldBounds(true);
 
     this.playerSpeed = 200;
+
+    // ==================================================
+    // KEYBOARD
+    // ==================================================
+
+    this.keys = this.input.keyboard.addKeys({
+      up: "W",
+      down: "S",
+      left: "A",
+      right: "D",
+    });
+
+    this.cursors = this.input.keyboard.createCursorKeys();
 
     // ==================================================
     // PLAYER LABEL
     // ==================================================
 
-    this.playerLabel =
-      this.add
-        .text(
-          this.player.x,
-          this.player.y + 35,
-          "PLAYER",
-          {
-            fontSize: "14px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5)
-        .setDepth(30);
+    this.playerLabel = this.add
+      .text(
+        this.player.x,
+        this.player.y + 35,
+        "PLAYER",
+        {
+          fontSize: "14px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(30);
 
     // ==================================================
-    // INTERACTION
+    // INTERACTION TEXT
     // ==================================================
 
-    this.interactText =
-      this.add
-        .text(
-          400,
-          550,
-          "",
-          {
-            fontSize: "19px",
-            color: "#ffffff",
-            backgroundColor:
-              "#1A365D",
-            padding: {
-              left: 15,
-              right: 15,
-              top: 10,
-              bottom: 10,
-            },
-          }
-        )
-        .setOrigin(0.5)
-        .setDepth(100);
+    this.interactText = this.add
+      .text(
+        400,
+        545,
+        "",
+        {
+          fontSize: "18px",
+          color: "#ffffff",
+          backgroundColor: "#1A365D",
+          padding: {
+            left: 15,
+            right: 15,
+            top: 10,
+            bottom: 10,
+          },
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(100);
 
-    this.interactText.setVisible(
-      false
-    );
+    this.interactText.setVisible(false);
   }
 
   // ==================================================
@@ -377,53 +269,52 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createVillageGate() {
-    // Gerbang
-    this.villageGate =
-      this.add.rectangle(
-        400,
-        550,
-        130,
-        55,
-        0x553c2e
-      );
+    this.villageGate = this.add.rectangle(
+      400,
+      555,
+      130,
+      55,
+      0x553c2e
+    );
 
-    this.villageGate
-      .setStrokeStyle(
-        4,
-        0xd4af37
-      )
-      .setDepth(25);
+    this.villageGate.setStrokeStyle(
+      4,
+      0xd4af37
+    );
 
-    // Icon
-    this.add
+    this.villageGateText = this.add
       .text(
         400,
-        540,
-        "🚪",
-        {
-          fontSize: "24px",
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(26);
-
-    // Label
-    this.add
-      .text(
-        400,
-        575,
+        515,
         "NAHWU VILLAGE",
         {
           fontSize: "13px",
           color: "#ffffff",
+          backgroundColor: "#1A365D",
+          padding: 5,
           fontStyle: "bold",
-          backgroundColor:
-            "#1A365D",
-          padding: 4,
         }
       )
       .setOrigin(0.5)
-      .setDepth(26);
+      .setDepth(20);
+
+    this.villageGatePrompt = this.add
+      .text(
+        400,
+        485,
+        "[ E ] Kembali ke Nahwu Village",
+        {
+          fontSize: "15px",
+          color: "#ffffff",
+          backgroundColor: "#1A365D",
+          padding: 7,
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(20);
+
+    this.villageGatePrompt.setVisible(false);
   }
 
   // ==================================================
@@ -431,83 +322,52 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   update() {
-    if (
-      !this.player ||
-      this.isTransitioning
-    ) {
+    if (!this.player || this.isTransitioning) {
       return;
     }
-
-    // ==================================================
-    // RESET INTERACTION
-    // ==================================================
-
-    this.interactText.setVisible(
-      false
-    );
 
     // ==================================================
     // MOVEMENT
     // ==================================================
 
-    this.player.body.setVelocity(
-      0,
-      0
-    );
+    const left =
+      this.keys.left.isDown || this.cursors.left.isDown;
 
-    if (
-      this.keys.left.isDown ||
-      this.cursors.left.isDown
-    ) {
-      this.player.body.setVelocityX(
-        -this.playerSpeed
-      );
-    }
+    const right =
+      this.keys.right.isDown || this.cursors.right.isDown;
 
-    if (
-      this.keys.right.isDown ||
-      this.cursors.right.isDown
-    ) {
-      this.player.body.setVelocityX(
-        this.playerSpeed
-      );
-    }
+    const up =
+      this.keys.up.isDown || this.cursors.up.isDown;
 
-    if (
-      this.keys.up.isDown ||
-      this.cursors.up.isDown
-    ) {
-      this.player.body.setVelocityY(
-        -this.playerSpeed
-      );
-    }
+    const down =
+      this.keys.down.isDown || this.cursors.down.isDown;
 
-    if (
-      this.keys.down.isDown ||
-      this.cursors.down.isDown
-    ) {
-      this.player.body.setVelocityY(
-        this.playerSpeed
+    const velocityX =
+      (left ? -1 : 0) +
+      (right ? 1 : 0);
+
+    const velocityY =
+      (up ? -1 : 0) +
+      (down ? 1 : 0);
+
+    if (velocityX !== 0 || velocityY !== 0) {
+      const direction = new Phaser.Math.Vector2(
+        velocityX,
+        velocityY
       );
+
+      direction.normalize();
+
+      this.player.body.setVelocity(
+        direction.x * this.playerSpeed,
+        direction.y * this.playerSpeed
+      );
+    } else {
+      this.player.body.setVelocity(0, 0);
     }
 
     // ==================================================
-    // DIAGONAL
-    // ==================================================
-
-    if (
-      this.player.body.velocity.length() >
-      0
-    ) {
-      this.player.body.velocity
-        .normalize()
-        .scale(
-          this.playerSpeed
-        );
-    }
-
-    // ==================================================
-    // PLAYER LABEL
+    // PLAYER LABEL FOLLOW PLAYER
     // ==================================================
 
     this.playerLabel.setPosition(
@@ -516,34 +376,37 @@ class ForestScene extends Phaser.Scene {
     );
 
     // ==================================================
-    // VILLAGE GATE
+    // RESET INTERACTION
     // ==================================================
 
-    const gateDistance =
-      Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        this.villageGate.x,
-        this.villageGate.y
-      );
+    this.interactText.setVisible(false);
+    this.villageGatePrompt.setVisible(false);
 
-    if (
-      gateDistance < 90
-    ) {
+    // ==================================================
+    // VILLAGE GATE INTERACTION
+    // ==================================================
+
+    const gateDistance = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.villageGate.x,
+      this.villageGate.y
+    );
+
+    if (gateDistance < 90) {
+      this.villageGatePrompt.setVisible(true);
+
       this.interactText.setText(
         "[ E ] Kembali ke Nahwu Village"
       );
 
-      this.interactText.setVisible(
-        true
-      );
+      this.interactText.setVisible(true);
 
       if (
-        Phaser.Input.Keyboard.JustDown(
-          this.interactKey
-        )
+        Phaser.Input.Keyboard.JustDown(this.interactKey)
       ) {
         this.returnToVillage();
+        return;
       }
     }
   }
@@ -559,9 +422,134 @@ class ForestScene extends Phaser.Scene {
 
     this.isTransitioning = true;
 
-    this.scene.start(
-      "VillageScene"
+    this.villageGatePrompt.setVisible(false);
+    this.interactText.setVisible(false);
+
+    this.scene.start("VillageScene");
+  }
+
+  // ==================================================
+  // CREATE TREE
+  // ==================================================
+
+  createTree(x, y) {
+    this.add.rectangle(
+      x,
+      y + 30,
+      18,
+      45,
+      0x8b4513
     );
+
+    this.add.circle(
+      x,
+      y,
+      32,
+      0x1f6b3a
+    );
+
+    this.add.circle(
+      x - 18,
+      y + 10,
+      23,
+      0x2e7d4f
+    );
+
+    this.add.circle(
+      x + 18,
+      y + 10,
+      23,
+      0x2e7d4f
+    );
+
+    const collider = this.add.rectangle(
+      x,
+      y + 18,
+      55,
+      65,
+      0xffffff,
+      0
+    );
+
+    this.physics.add.existing(collider, true);
+    this.obstacles.add(collider);
+  }
+
+  // ==================================================
+  // CREATE ROCK
+  // ==================================================
+
+  createRock(x, y) {
+    this.add.circle(
+      x,
+      y,
+      18,
+      0x718096
+    );
+
+    this.add.circle(
+      x - 8,
+      y - 5,
+      8,
+      0xa0aec0
+    );
+
+    const collider = this.add.rectangle(
+      x,
+      y,
+      42,
+      36,
+      0xffffff,
+      0
+    );
+
+    this.physics.add.existing(collider, true);
+    this.obstacles.add(collider);
+  }
+
+  // ==================================================
+  // CREATE BUSH
+  // ==================================================
+
+  createBush(x, y) {
+    this.add.circle(
+      x,
+      y,
+      22,
+      0x285e3b
+    );
+
+    this.add.circle(
+      x - 15,
+      y + 5,
+      16,
+      0x2f855a
+    );
+
+    this.add.circle(
+      x + 15,
+      y + 5,
+      16,
+      0x2f855a
+    );
+  }
+
+  // ==================================================
+  // CREATE WALL
+  // ==================================================
+
+  createWall(x, y, width, height) {
+    const wall = this.add.rectangle(
+      x,
+      y,
+      width,
+      height,
+      0xffffff,
+      0
+    );
+
+    this.physics.add.existing(wall, true);
+    this.obstacles.add(wall);
   }
 
   // ==================================================
@@ -569,39 +557,51 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createHUD() {
-    this.levelText =
-      this.add
-        .text(
-          20,
-          20,
-          "",
-          {
-            fontSize: "18px",
-            color: "#ffffff",
-            fontStyle: "bold",
-            backgroundColor:
-              "#1A365D",
-            padding: 8,
-          }
-        )
-        .setDepth(100);
+    this.add.rectangle(
+      80,
+      35,
+      120,
+      42,
+      0x1a365d,
+      0.95
+    ).setDepth(200);
 
-    this.goldText =
-      this.add
-        .text(
-          650,
-          20,
-          "",
-          {
-            fontSize: "18px",
-            color: "#ffd700",
-            fontStyle: "bold",
-            backgroundColor:
-              "#1A365D",
-            padding: 8,
-          }
-        )
-        .setDepth(100);
+    this.levelText = this.add
+      .text(
+        80,
+        35,
+        "LVL 1",
+        {
+          fontSize: "17px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(201);
+
+    this.add.rectangle(
+      720,
+      35,
+      150,
+      42,
+      0x1a365d,
+      0.95
+    ).setDepth(200);
+
+    this.goldText = this.add
+      .text(
+        720,
+        35,
+        "GOLD: 0",
+        {
+          fontSize: "17px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(201);
   }
 
   // ==================================================
@@ -609,22 +609,16 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   updateHUD() {
-    const level =
-      Number(
-        this.playerData.level
-      ) || 1;
-
-    const gold =
-      Number(
-        this.playerData.gold
-      ) || 0;
+    if (!this.playerData) {
+      return;
+    }
 
     this.levelText.setText(
-      `LVL ${level}`
+      `LVL ${this.playerData.level}`
     );
 
     this.goldText.setText(
-      `🪙 GOLD: ${gold}`
+      `GOLD: ${this.playerData.gold}`
     );
   }
 }

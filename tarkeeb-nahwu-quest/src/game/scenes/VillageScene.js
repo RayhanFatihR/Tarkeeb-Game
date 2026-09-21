@@ -357,7 +357,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     this.createHouse(
-      620,
+      600,
       220,
       "Grammar House"
     );
@@ -366,17 +366,17 @@ class VillageScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(70, 90);
+    this.createTree(70, 100);
 
-    this.createTree(750, 90);
+    this.createTree(500, 120);
 
-    this.createTree(70, 500);
+    this.createTree(70, 470);
 
     this.createTree(300, 520);
 
     this.createTree(520, 520);
 
-    this.createTree(750, 450);
+    this.createTree(720, 420);
 
     // ==================================================
     // CHESTS
@@ -385,20 +385,20 @@ class VillageScene extends Phaser.Scene {
     this.chests = [];
 
     this.createChest(
-      300,
-      410,
+      280,
+      400,
       items.swordOfIsim
     );
 
     this.createChest(
-      520,
-      420,
+      540,
+      410,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      700,
-      350,
+      690,
+      330,
       items.ringOfRafa
     );
 
@@ -427,7 +427,7 @@ class VillageScene extends Phaser.Scene {
     const goblin =
       new Monster(
         this,
-        145,
+        150,
         500,
         monsters.grammarGoblin
       );
@@ -439,8 +439,8 @@ class VillageScene extends Phaser.Scene {
     const golem =
       new Monster(
         this,
-        330,
-        160,
+        320,
+        155,
         monsters.irabGolem
       );
 
@@ -837,8 +837,6 @@ class VillageScene extends Phaser.Scene {
         this.grammarMaster.talk();
       }
     }
-  }
-
     // ==================================================
     // FOREST GATE
     // ==================================================
@@ -883,6 +881,7 @@ class VillageScene extends Phaser.Scene {
         );
       }
     }
+  }
 
   // ==================================================
   // ENTER FOREST
