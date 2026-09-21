@@ -90,6 +90,13 @@ class ForestScene extends Phaser.Scene {
 
     this.createWorld();
     this.createPlayer();
+
+    // Player tidak bisa menembus pohon, batu, atau dinding.
+    this.physics.add.collider(
+      this.player,
+      this.obstacles
+    );
+
     this.createVillageGate();
     this.createHUD();
     this.updateHUD();
@@ -313,12 +320,16 @@ class ForestScene extends Phaser.Scene {
 
     this.playerLabel.setPosition(this.player.x, this.player.y + 35);
 
-    // Monsters only chase while the player is free to move.
-    this.monsters.forEach((monster) => {
-      if (monster && !monster.isDead()) {
-        monster.update(this.player);
-      }
-    });
+    // ==================================================
+    // MONSTER PROXIMITY
+    // ==================================================
+    //
+    // Monster AI/chasing sementara dimatikan.
+    // Posisi monster tetap, tetapi kita tetap menghitung
+    // jarak monster ke player agar bisa diajak battle.
+    // Ini menghindari kemungkinan loop / proses berat
+    // dari Monster.update() yang sebelumnya membuat game freeze.
+    // ==================================================
 
     this.interactText.setVisible(false);
     this.villageGatePrompt.setVisible(false);
@@ -367,6 +378,43 @@ class ForestScene extends Phaser.Scene {
     this.villageGatePrompt.setVisible(false);
     this.interactText.setVisible(false);
     this.scene.start("VillageScene");
+  }
+
+  // ==================================================
+  // GET NEAREST MONSTER
+  // ==================================================
+
+  getNearestMonster() {
+    let nearestMonster = null;
+    let nearestDistance = Infinity;
+
+    const interactionDistance = 85;
+
+    this.monsters.forEach((monster) => {
+      if (!monster || monster.isDead()) {
+        return;
+      }
+
+      const distance =
+        Phaser.Math.Distance.Between(
+          this.player.x,
+          this.player.y,
+          monster.x,
+          monster.y
+        );
+
+      // Kita kelola sendiri status nearby agar
+      // tidak bergantung pada Monster.update().
+      monster.isNearby =
+        distance <= interactionDistance;
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestMonster = monster;
+      }
+    });
+
+    return nearestMonster;
   }
 
   // ==================================================
