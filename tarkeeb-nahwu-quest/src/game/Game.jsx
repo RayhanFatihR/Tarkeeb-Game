@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 
+import StartScene from "./scenes/StartScene";
+import IntroScene from "./scenes/IntroScene";
 import VillageScene from "./scenes/VillageScene";
 import ForestScene from "./scenes/ForestScene";
 
@@ -38,7 +40,8 @@ function Game() {
 
       scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
+        autoCenter:
+          Phaser.Scale.CENTER_BOTH,
 
         width: 800,
         height: 600,
@@ -54,7 +57,14 @@ function Game() {
         },
       },
 
-      scene: [VillageScene, ForestScene],
+      // StartScene berada paling depan,
+      // jadi game selalu membuka Main Menu terlebih dahulu.
+      scene: [
+        StartScene,
+        IntroScene,
+        VillageScene,
+        ForestScene,
+      ],
     };
 
     gameInstance.current =
@@ -62,8 +72,12 @@ function Game() {
 
     return () => {
       if (gameInstance.current) {
-        gameInstance.current.destroy(true);
-        gameInstance.current = null;
+        gameInstance.current.destroy(
+          true
+        );
+
+        gameInstance.current =
+          null;
       }
     };
   }, []);
