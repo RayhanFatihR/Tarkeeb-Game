@@ -466,6 +466,19 @@ class VillageScene extends Phaser.Scene {
       goblin,
       golem
     );
+
+    // ==================================================
+    // MONSTER VISUAL ANIMATION
+    // ==================================================
+
+    this.monsters.forEach(
+      (monster, index) => {
+        this.visualFoundation.animateMonster(
+          monster,
+          index
+        );
+      }
+    );
   }
 
   // ==================================================
@@ -764,14 +777,21 @@ class VillageScene extends Phaser.Scene {
 
     this.monsters.forEach(
       (monster) => {
+        if (!monster) {
+          return;
+        }
+
         if (
-          monster &&
           !monster.isDead()
         ) {
           monster.update(
             this.player
           );
         }
+
+        this.visualFoundation.syncMonsterVisuals(
+          monster
+        );
       }
     );
 
@@ -808,6 +828,24 @@ class VillageScene extends Phaser.Scene {
           nearestChest =
             chest;
         }
+      }
+    );
+
+    // ==================================================
+    // CHEST VISUAL FEEDBACK
+    // ==================================================
+
+    this.chests.forEach(
+      (chest) => {
+        const isNearby =
+          chest === nearestChest &&
+          nearestChestDistance < 80 &&
+          !chest.opened;
+
+        this.visualFoundation.setChestNearby(
+          chest,
+          isNearby
+        );
       }
     );
 
@@ -4654,6 +4692,7 @@ class VillageScene extends Phaser.Scene {
       x,
       y,
       opened: false,
+      isNearby: false,
 
       reward,
 
@@ -4693,11 +4732,6 @@ class VillageScene extends Phaser.Scene {
           }
         )
         .setOrigin(0.5);
-
-        // ==========================================
-        // CHEST VISUAL ANIMATION
-        // ==========================================
-        this.visualFoundation.animateChest(chest);
 
     this.chests.push(
       chest

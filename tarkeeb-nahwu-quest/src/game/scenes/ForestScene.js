@@ -18,7 +18,8 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   create() {
-    this.visualFoundation = new VisualFoundation(this);
+    this.visualFoundation =
+      new VisualFoundation(this);
 
     let savedData = this.registry.get("playerData");
 
@@ -229,6 +230,19 @@ class ForestScene extends Phaser.Scene {
     this.monsters.push(slime, goblin, golem);
 
     // ==================================================
+    // MONSTER VISUAL ANIMATION
+    // ==================================================
+
+    this.monsters.forEach(
+      (monster, index) => {
+        this.visualFoundation.animateMonster(
+          monster,
+          index
+        );
+      }
+    );
+
+    // ==================================================
     // COLLISION WALLS
     // ==================================================
 
@@ -283,8 +297,6 @@ class ForestScene extends Phaser.Scene {
       .setDepth(100);
 
     this.interactText.setVisible(false);
-
-    this.visualFoundation.animatePlayer(this.player);
   }
 
   // ==================================================
@@ -328,11 +340,6 @@ class ForestScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setDepth(26);
-
-    this.visualFoundation.animateNPC([
-      this.forestQuestNPC,
-      this.forestQuestNPCIcon,
-    ]);
   }
 
   // ==================================================
@@ -766,9 +773,17 @@ class ForestScene extends Phaser.Scene {
 
     // Monsters only chase while the player is free to move.
     this.monsters.forEach((monster) => {
-      if (monster && !monster.isDead()) {
+      if (!monster) {
+        return;
+      }
+
+      if (!monster.isDead()) {
         monster.update(this.player);
       }
+
+      this.visualFoundation.syncMonsterVisuals(
+        monster
+      );
     });
 
     this.interactText.setVisible(false);
@@ -863,15 +878,9 @@ class ForestScene extends Phaser.Scene {
 
   createTree(x, y) {
     this.add.rectangle(x, y + 30, 18, 45, 0x8b4513);
-    const crown = this.add.circle(x, y, 32, 0x1f6b3a);
-    const crownLeft = this.add.circle(x - 18, y + 10, 23, 0x2e7d4f);
-    const crownRight = this.add.circle(x + 18, y + 10, 23, 0x2e7d4f);
-
-    this.visualFoundation.animateTree([
-      crown,
-      crownLeft,
-      crownRight,
-    ]);
+    this.add.circle(x, y, 32, 0x1f6b3a);
+    this.add.circle(x - 18, y + 10, 23, 0x2e7d4f);
+    this.add.circle(x + 18, y + 10, 23, 0x2e7d4f);
 
     const collider = this.add.rectangle(x, y + 18, 55, 65, 0xffffff, 0);
     this.physics.add.existing(collider, true);
@@ -883,10 +892,8 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createRock(x, y) {
-    const rock = this.add.circle(x, y, 18, 0x718096);
-    const highlight = this.add.circle(x - 8, y - 5, 8, 0xa0aec0);
-
-    this.visualFoundation.animateRock([rock, highlight]);
+    this.add.circle(x, y, 18, 0x718096);
+    this.add.circle(x - 8, y - 5, 8, 0xa0aec0);
 
     const collider = this.add.rectangle(x, y, 42, 36, 0xffffff, 0);
     this.physics.add.existing(collider, true);
@@ -898,15 +905,9 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createBush(x, y) {
-    const bush = this.add.circle(x, y, 22, 0x285e3b);
-    const bushLeft = this.add.circle(x - 15, y + 5, 16, 0x2f855a);
-    const bushRight = this.add.circle(x + 15, y + 5, 16, 0x2f855a);
-
-    this.visualFoundation.animateBush([
-      bush,
-      bushLeft,
-      bushRight,
-    ]);
+    this.add.circle(x, y, 22, 0x285e3b);
+    this.add.circle(x - 15, y + 5, 16, 0x2f855a);
+    this.add.circle(x + 15, y + 5, 16, 0x2f855a);
   }
 
   // ==================================================
