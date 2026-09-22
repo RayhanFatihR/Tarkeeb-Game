@@ -1,6 +1,22 @@
 import Phaser from "phaser";
 import VisualFoundation from "./VisualFoundation";
 
+import playerIdleAsset from "../../assets/player/player.png";
+import playerWalkAsset from "../../assets/player/player_walk.png";
+
+import grammarMasterAsset from "../../assets/npc/grammar_master.png";
+
+import nahwuSlimeAsset from "../../assets/monsters/nahwu_slime.png";
+import grammarGoblinAsset from "../../assets/monsters/grammar_goblin.png";
+import irabGolemAsset from "../../assets/monsters/irab_golem.png";
+
+import chestClosedAsset from "../../assets/objects/chest_closed.png";
+import chestOpenAsset from "../../assets/objects/chest_open.png";
+import treeAsset from "../../assets/objects/tree_01.png";
+
+import grassTileAsset from "../../assets/tiles/grass_tile.png";
+import pathTileAsset from "../../assets/tiles/path_tile.png";
+
 import NPC from "../objects/NPC";
 import Monster from "../objects/Monster";
 
@@ -15,6 +31,71 @@ import skillQuestions from "../data/skillQuestions";
 class VillageScene extends Phaser.Scene {
   constructor() {
     super("VillageScene");
+  }
+
+  // ==================================================
+  // PRELOAD PIXEL ASSETS
+  // ==================================================
+
+  preload() {
+    this.load.image(
+      "playerIdlePixel",
+      playerIdleAsset
+    );
+
+    this.load.spritesheet(
+      "playerWalkPixel",
+      playerWalkAsset,
+      {
+        frameWidth: 320,
+        frameHeight: 320,
+      }
+    );
+
+    this.load.image(
+      "grammarMasterPixel",
+      grammarMasterAsset
+    );
+
+    this.load.image(
+      "nahwuSlimePixel",
+      nahwuSlimeAsset
+    );
+
+    this.load.image(
+      "grammarGoblinPixel",
+      grammarGoblinAsset
+    );
+
+    this.load.image(
+      "irabGolemPixel",
+      irabGolemAsset
+    );
+
+    this.load.image(
+      "chestClosedPixel",
+      chestClosedAsset
+    );
+
+    this.load.image(
+      "chestOpenPixel",
+      chestOpenAsset
+    );
+
+    this.load.image(
+      "treePixel",
+      treeAsset
+    );
+
+    this.load.image(
+      "grassTilePixel",
+      grassTileAsset
+    );
+
+    this.load.image(
+      "pathTilePixel",
+      pathTileAsset
+    );
   }
 
   // ==================================================
@@ -262,10 +343,15 @@ class VillageScene extends Phaser.Scene {
     this.grammarMaster =
       new NPC(
         this,
-        250,
-        420,
+        220,
+        415,
         "Grammar Master"
       );
+
+    this.applyNPCPixelVisual(
+      this.grammarMaster,
+      "grammarMasterPixel"
+    );
 
     // ==================================================
     // INPUT
@@ -321,35 +407,39 @@ class VillageScene extends Phaser.Scene {
     // BACKGROUND
     // ==================================================
 
-    this.add.rectangle(
-      400,
-      300,
-      800,
-      600,
-      0x7cb342
-    );
+    this.add
+      .tileSprite(
+        400,
+        300,
+        800,
+        600,
+        "grassTilePixel"
+      )
+      .setDepth(-20);
 
     // ==================================================
     // ROADS
     // ==================================================
 
-    // Vertical
-    this.add.rectangle(
-      400,
-      300,
-      120,
-      600,
-      0xd8c39b
-    );
+    this.add
+      .tileSprite(
+        400,
+        300,
+        128,
+        600,
+        "pathTilePixel"
+      )
+      .setDepth(-10);
 
-    // Horizontal
-    this.add.rectangle(
-      400,
-      300,
-      800,
-      100,
-      0xd8c39b
-    );
+    this.add
+      .tileSprite(
+        400,
+        300,
+        800,
+        112,
+        "pathTilePixel"
+      )
+      .setDepth(-10);
 
     // ==================================================
     // OBSTACLES
@@ -414,20 +504,20 @@ class VillageScene extends Phaser.Scene {
     this.chests = [];
 
     this.createChest(
-      620,
-      420,
+      560,
+      405,
       items.swordOfIsim
     );
 
     this.createChest(
-      300,
+      285,
       500,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      720,
-      350,
+      655,
+      380,
       items.ringOfRafa
     );
 
@@ -444,7 +534,7 @@ class VillageScene extends Phaser.Scene {
     const slime =
       new Monster(
         this,
-        580,
+        635,
         500,
         monsters.nahwuSlime
       );
@@ -456,8 +546,8 @@ class VillageScene extends Phaser.Scene {
     const goblin =
       new Monster(
         this,
-        180,
-        500,
+        165,
+        485,
         monsters.grammarGoblin
       );
 
@@ -468,8 +558,8 @@ class VillageScene extends Phaser.Scene {
     const golem =
       new Monster(
         this,
-        700,
-        250,
+        555,
+        165,
         monsters.irabGolem
       );
 
@@ -498,16 +588,31 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   createPlayer() {
+    this.createPlayerAnimations();
+
     this.player =
-      this.add.circle(
+      this.physics.add.sprite(
         400,
         350,
-        25,
-        0x3182ce
+        "playerWalkPixel",
+        0
       );
 
-    this.physics.add.existing(
-      this.player
+    this.player
+      .setDisplaySize(
+        76,
+        76
+      )
+      .setDepth(30);
+
+    this.player.body.setSize(
+      120,
+      92
+    );
+
+    this.player.body.setOffset(
+      100,
+      190
     );
 
     this.player.body.setCollideWorldBounds(
@@ -608,7 +713,8 @@ class VillageScene extends Phaser.Scene {
             fontStyle: "bold",
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setVisible(false);
 
     // ==================================================
     // INTERACTION TEXT
@@ -704,6 +810,8 @@ class VillageScene extends Phaser.Scene {
         0
       );
 
+      this.stopPlayerPixelAnimation();
+
       return;
     }
 
@@ -774,6 +882,8 @@ class VillageScene extends Phaser.Scene {
           this.playerSpeed
         );
     }
+
+    this.updatePlayerPixelAnimation();
 
     // ==================================================
     // PLAYER LABEL
@@ -4788,6 +4898,246 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
+  // PIXEL PLAYER ANIMATIONS
+  // ==================================================
+
+  createPlayerAnimations() {
+    const animationConfigs = [
+      {
+        key: "playerWalkDown",
+        start: 0,
+        end: 3,
+      },
+      {
+        key: "playerWalkLeft",
+        start: 4,
+        end: 7,
+      },
+      {
+        key: "playerWalkRight",
+        start: 8,
+        end: 11,
+      },
+      {
+        key: "playerWalkUp",
+        start: 12,
+        end: 15,
+      },
+    ];
+
+    animationConfigs.forEach(
+      (config) => {
+        if (
+          this.anims.exists(
+            config.key
+          )
+        ) {
+          return;
+        }
+
+        this.anims.create({
+          key: config.key,
+
+          frames:
+            this.anims.generateFrameNumbers(
+              "playerWalkPixel",
+              {
+                start: config.start,
+                end: config.end,
+              }
+            ),
+
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+    );
+  }
+
+  updatePlayerPixelAnimation() {
+    if (
+      !this.player ||
+      !this.player.body
+    ) {
+      return;
+    }
+
+    const vx =
+      this.player.body.velocity.x;
+
+    const vy =
+      this.player.body.velocity.y;
+
+    if (
+      Math.abs(vx) < 1 &&
+      Math.abs(vy) < 1
+    ) {
+      this.stopPlayerPixelAnimation();
+      return;
+    }
+
+    if (
+      Math.abs(vx) >
+      Math.abs(vy)
+    ) {
+      if (vx < 0) {
+        this.player.play(
+          "playerWalkLeft",
+          true
+        );
+      } else {
+        this.player.play(
+          "playerWalkRight",
+          true
+        );
+      }
+
+      return;
+    }
+
+    if (vy < 0) {
+      this.player.play(
+        "playerWalkUp",
+        true
+      );
+    } else {
+      this.player.play(
+        "playerWalkDown",
+        true
+      );
+    }
+  }
+
+  stopPlayerPixelAnimation() {
+    if (!this.player) {
+      return;
+    }
+
+    if (
+      this.player.anims &&
+      this.player.anims.isPlaying
+    ) {
+      this.player.anims.stop();
+    }
+
+    if (
+      this.player.texture?.key ===
+      "playerWalkPixel"
+    ) {
+      this.player.setFrame(0);
+    }
+  }
+
+  // ==================================================
+  // PIXEL NPC VISUAL
+  // ==================================================
+
+  applyNPCPixelVisual(
+    npc,
+    textureKey
+  ) {
+    if (!npc) {
+      return;
+    }
+
+    npc.list.forEach(
+      (child) => {
+        if (
+          child &&
+          child.type === "Arc"
+        ) {
+          child.setVisible(false);
+        }
+      }
+    );
+
+    const sprite =
+      this.add.image(
+        0,
+        -10,
+        textureKey
+      );
+
+    sprite.setDisplaySize(
+      74,
+      88
+    );
+
+    npc.addAt(
+      sprite,
+      0
+    );
+
+    if (npc.nameText) {
+      npc.nameText
+        .setY(43)
+        .setFontSize(12)
+        .setStroke(
+          "#1A365D",
+          3
+        );
+    }
+
+    if (npc.interactionText) {
+      npc.interactionText
+        .setY(-63)
+        .setFontSize(13);
+    }
+  }
+
+  // ==================================================
+  // PIXEL MONSTER VISUAL
+  // ==================================================
+
+  applyMonsterPixelVisual(
+    monster,
+    textureKey,
+    width,
+    height
+  ) {
+    if (
+      !monster ||
+      !monster.list
+    ) {
+      return;
+    }
+
+    monster.list.forEach(
+      (child) => {
+        if (!child) {
+          return;
+        }
+
+        if (
+          child.type === "Arc" ||
+          child.type === "Rectangle"
+        ) {
+          child.setVisible(false);
+        }
+      }
+    );
+
+    const sprite =
+      this.add.image(
+        0,
+        -13,
+        textureKey
+      );
+
+    sprite
+      .setDisplaySize(
+        width,
+        height
+      )
+      .setDepth(1);
+
+    monster.addAt(
+      sprite,
+      0
+    );
+  }
+
+  // ==================================================
   // CREATE HOUSE
   // ==================================================
 
@@ -4857,47 +5207,30 @@ class VillageScene extends Phaser.Scene {
     x,
     y
   ) {
-    this.add.rectangle(
-      x,
-      y + 35,
-      20,
-      50,
-      0x8b4513
-    );
+    const tree =
+      this.add.image(
+        x,
+        y,
+        "treePixel"
+      );
 
-    const crown = this.add.circle(
-      x,
-      y,
-      35,
-      0x2e7d32
-    );
-
-    const crownLeft = this.add.circle(
-      x - 20,
-      y + 10,
-      25,
-      0x388e3c
-    );
-
-    const crownRight = this.add.circle(
-      x + 20,
-      y + 10,
-      25,
-      0x388e3c
-    );
+    tree
+      .setDisplaySize(
+        90,
+        112
+      )
+      .setDepth(8);
 
     this.visualFoundation.animateTree([
-      crown,
-      crownLeft,
-      crownRight,
+      tree,
     ]);
 
     const collider =
       this.add.rectangle(
         x,
-        y + 20,
-        65,
-        75,
+        y + 28,
+        42,
+        46,
         0xffffff,
         0
       );
@@ -4935,42 +5268,43 @@ class VillageScene extends Phaser.Scene {
     };
 
     chest.body =
-      this.add.rectangle(
+      this.add.image(
         x,
         y,
-        50,
-        40,
-        0x8b4513
+        "chestClosedPixel"
       );
 
-    chest.lid =
-      this.add.rectangle(
-        x,
-        y - 15,
-        50,
-        15,
-        0xd4af37
-      );
+    chest.body
+      .setDisplaySize(
+        54,
+        48
+      )
+      .setDepth(20);
 
     chest.label =
       this.add
         .text(
           x,
-          y + 30,
+          y + 34,
           "CHEST",
           {
-            fontSize: "14px",
-            color: "#ffffff",
+            fontSize: "11px",
+            color: "#F6E3A1",
             fontStyle: "bold",
+            stroke: "#1A365D",
+            strokeThickness: 3,
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(21);
 
     this.chests.push(
       chest
     );
 
-    this.visualFoundation.animateChest(chest);
+    this.visualFoundation.animateChest(
+      chest
+    );
   }
 
   // ==================================================
@@ -5306,9 +5640,19 @@ class VillageScene extends Phaser.Scene {
       this.currentChest.opened =
         true;
 
-      this.currentChest.lid.setFillStyle(
-        0x888888
-      );
+      if (
+        this.currentChest.body &&
+        this.currentChest.body.active
+      ) {
+        this.currentChest.body.setTexture(
+          "chestOpenPixel"
+        );
+
+        this.currentChest.body.setDisplaySize(
+          54,
+          48
+        );
+      }
 
       this.currentChest.label.setText(
         "OPENED!"

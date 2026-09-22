@@ -163,11 +163,30 @@ export default class VisualFoundation {
     if (!chest) return;
 
     if (chest.body) {
+      // Simpan ukuran dasar hasil setDisplaySize().
+      // Jangan tween scale ke angka 1 karena itu membuat PNG
+      // kembali ke ukuran aslinya yang sangat besar.
+      chest.body.setData(
+        "chestBaseScaleX",
+        chest.body.scaleX
+      );
+
+      chest.body.setData(
+        "chestBaseScaleY",
+        chest.body.scaleY
+      );
+
+      chest.body.setData(
+        "chestBaseY",
+        chest.body.y
+      );
+
+      // Idle chest cukup bobbing kecil pada posisi Y.
+      // Scale tetap aman sesuai ukuran 54x48 dari VillageScene.
       this.tweens.add({
         targets: chest.body,
-        scaleX: 1.035,
-        scaleY: 1.06,
-        duration: 1000,
+        y: chest.body.y - 2,
+        duration: 950,
         ease: "Sine.easeInOut",
         yoyo: true,
         repeat: -1,
@@ -175,10 +194,19 @@ export default class VisualFoundation {
     }
 
     if (chest.lid) {
+      chest.lid.setData(
+        "chestBaseScaleX",
+        chest.lid.scaleX
+      );
+
+      chest.lid.setData(
+        "chestBaseScaleY",
+        chest.lid.scaleY
+      );
+
       this.tweens.add({
         targets: chest.lid,
         y: chest.lid.y - 2,
-        scaleX: 1.025,
         duration: 900,
         ease: "Sine.easeInOut",
         yoyo: true,
@@ -202,69 +230,127 @@ export default class VisualFoundation {
   setChestNearby(chest, nearby) {
     if (!chest || !chest.body) return;
 
-    if (chest.isNearby === nearby) return;
+    if (chest.isNearby === nearby) {
+      return;
+    }
 
     chest.isNearby = nearby;
 
-    if (nearby) {
+    const bodyBaseScaleX =
+      chest.body.getData(
+        "chestBaseScaleX"
+      ) ?? chest.body.scaleX;
+
+    const bodyBaseScaleY =
+      chest.body.getData(
+        "chestBaseScaleY"
+      ) ?? chest.body.scaleY;
+
+    // Hentikan hanya tween scale sebelumnya.
+    // Tween idle Y tetap berjalan.
+    this.tweens.killTweensOf(
+      chest.body,
+      [
+        "scaleX",
+        "scaleY",
+      ]
+    );
+
+    this.tweens.add({
+      targets: chest.body,
+
+      scaleX:
+        nearby
+          ? bodyBaseScaleX * 1.10
+          : bodyBaseScaleX,
+
+      scaleY:
+        nearby
+          ? bodyBaseScaleY * 1.10
+          : bodyBaseScaleY,
+
+      duration: 180,
+
+      ease:
+        nearby
+          ? "Back.easeOut"
+          : "Sine.easeOut",
+    });
+
+    if (chest.lid) {
+      const lidBaseScaleX =
+        chest.lid.getData(
+          "chestBaseScaleX"
+        ) ?? chest.lid.scaleX;
+
+      const lidBaseScaleY =
+        chest.lid.getData(
+          "chestBaseScaleY"
+        ) ?? chest.lid.scaleY;
+
+      this.tweens.killTweensOf(
+        chest.lid,
+        [
+          "scaleX",
+          "scaleY",
+        ]
+      );
+
       this.tweens.add({
-        targets: chest.body,
-        scaleX: 1.10,
-        scaleY: 1.10,
+        targets: chest.lid,
+
+        scaleX:
+          nearby
+            ? lidBaseScaleX * 1.10
+            : lidBaseScaleX,
+
+        scaleY:
+          nearby
+            ? lidBaseScaleY * 1.10
+            : lidBaseScaleY,
+
         duration: 180,
-        ease: "Back.easeOut",
+
+        ease:
+          nearby
+            ? "Back.easeOut"
+            : "Sine.easeOut",
       });
+    }
 
-      if (chest.lid) {
-        this.tweens.add({
-          targets: chest.lid,
-          scaleX: 1.10,
-          duration: 180,
-          ease: "Back.easeOut",
-        });
-      }
+    if (chest.label) {
+      this.tweens.killTweensOf(
+        chest.label,
+        [
+          "scaleX",
+          "scaleY",
+        ]
+      );
 
-      if (chest.label) {
-        this.tweens.add({
-          targets: chest.label,
-          scaleX: 1.08,
-          scaleY: 1.08,
-          alpha: 1,
-          duration: 180,
-          ease: "Back.easeOut",
-        });
-      }
-    } else {
       this.tweens.add({
-        targets: chest.body,
-        scaleX: 1,
-        scaleY: 1,
+        targets: chest.label,
+
+        scaleX:
+          nearby
+            ? 1.08
+            : 1,
+
+        scaleY:
+          nearby
+            ? 1.08
+            : 1,
+
+        alpha: 1,
+
         duration: 180,
-        ease: "Sine.easeOut",
+
+        ease:
+          nearby
+            ? "Back.easeOut"
+            : "Sine.easeOut",
       });
-
-      if (chest.lid) {
-        this.tweens.add({
-          targets: chest.lid,
-          scaleX: 1,
-          duration: 180,
-          ease: "Sine.easeOut",
-        });
-      }
-
-      if (chest.label) {
-        this.tweens.add({
-          targets: chest.label,
-          scaleX: 1,
-          scaleY: 1,
-          alpha: 1,
-          duration: 180,
-          ease: "Sine.easeOut",
-        });
-      }
     }
   }
-
 
   // ==================================================
   // MONSTER

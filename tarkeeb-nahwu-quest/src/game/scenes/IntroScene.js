@@ -125,6 +125,297 @@ class IntroScene extends Phaser.Scene {
   }
 
   // ==================================================
+  // BEAT TRANSITION OVERLAY
+  // ==================================================
+
+  createBeatTransitionOverlay() {
+    this.beatTransitionOverlay =
+      this.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x030712,
+        0
+      );
+
+    this.beatTransitionOverlay
+      .setDepth(4900)
+      .setScrollFactor(0);
+  }
+
+  // ==================================================
+  // STORY CONTROLS
+  // ==================================================
+
+  createStoryControls() {
+    this.progressDots = [];
+
+    this.progressText =
+      this.add
+        .text(
+          82,
+          572,
+          "STORY  1 / 7",
+          {
+            fontSize: "11px",
+            color: "#A0AEC0",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(5003);
+
+    for (
+      let index = 0;
+      index < 7;
+      index += 1
+    ) {
+      const dot =
+        this.add.circle(
+          154 + index * 15,
+          572,
+          3.5,
+          0x4a5568,
+          0.85
+        );
+
+      dot.setDepth(5003);
+
+      this.progressDots.push(
+        dot
+      );
+    }
+
+    this.nextButton =
+      this.add.rectangle(
+        640,
+        572,
+        165,
+        30,
+        0x101c33,
+        0.96
+      );
+
+    this.nextButton
+      .setStrokeStyle(
+        1,
+        0x4a6b92,
+        0.75
+      )
+      .setDepth(5002)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    this.nextText =
+      this.add
+        .text(
+          640,
+          572,
+          "NEXT  [ ENTER ]",
+          {
+            fontSize: "11px",
+            color: "#CBD5E0",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(5003);
+
+    this.nextButton.on(
+      "pointerover",
+      () => {
+        if (
+          this.finished ||
+          this.isBeatTransitioning
+        ) {
+          return;
+        }
+
+        this.nextButton.setFillStyle(
+          0x1a365d
+        );
+
+        this.nextButton.setStrokeStyle(
+          1,
+          0xd4af37,
+          0.9
+        );
+
+        this.nextText.setColor(
+          "#F6C453"
+        );
+      }
+    );
+
+    this.nextButton.on(
+      "pointerout",
+      () => {
+        this.nextButton.setFillStyle(
+          0x101c33
+        );
+
+        this.nextButton.setStrokeStyle(
+          1,
+          0x4a6b92,
+          0.75
+        );
+
+        this.nextText.setColor(
+          "#CBD5E0"
+        );
+      }
+    );
+
+    this.nextButton.on(
+      "pointerdown",
+      () => {
+        this.advanceStory();
+      }
+    );
+
+    this.updateStoryProgress(0);
+  }
+
+  updateStoryProgress(index) {
+    if (
+      !this.progressDots ||
+      !this.progressText
+    ) {
+      return;
+    }
+
+    const safeIndex =
+      Phaser.Math.Clamp(
+        index,
+        0,
+        6
+      );
+
+    this.progressText.setText(
+      `STORY  ${safeIndex + 1} / 7`
+    );
+
+    this.progressDots.forEach(
+      (dot, dotIndex) => {
+        this.tweens.killTweensOf(
+          dot
+        );
+
+        dot.setScale(1);
+
+        if (
+          dotIndex < safeIndex
+        ) {
+          dot.setFillStyle(
+            0x38a169,
+            0.90
+          );
+
+          return;
+        }
+
+        if (
+          dotIndex === safeIndex
+        ) {
+          dot.setFillStyle(
+            0xd4af37,
+            1
+          );
+
+          this.tweens.add({
+            targets: dot,
+            scaleX: 1.45,
+            scaleY: 1.45,
+            alpha: 0.55,
+            duration: 650,
+            ease: "Sine.easeInOut",
+            yoyo: true,
+            repeat: -1,
+          });
+
+          return;
+        }
+
+        dot.setFillStyle(
+          0x4a5568,
+          0.75
+        );
+      }
+    );
+  }
+
+  advanceStory() {
+    if (
+      this.finished ||
+      this.isBeatTransitioning
+    ) {
+      return;
+    }
+
+    if (
+      this.currentBeat >= 6
+    ) {
+      this.finishIntro();
+      return;
+    }
+
+    this.transitionToBeat(
+      this.currentBeat + 1
+    );
+  }
+
+  transitionToBeat(index) {
+    if (
+      this.finished ||
+      this.isBeatTransitioning
+    ) {
+      return;
+    }
+
+    if (index > 6) {
+      this.finishIntro();
+      return;
+    }
+
+    this.isBeatTransitioning =
+      true;
+
+    if (this.autoEvent) {
+      this.autoEvent.remove(false);
+      this.autoEvent = null;
+    }
+
+    this.tweens.killTweensOf(
+      this.beatTransitionOverlay
+    );
+
+    this.tweens.add({
+      targets:
+        this.beatTransitionOverlay,
+      alpha: 0.94,
+      duration: 180,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        this.showBeat(index);
+
+        this.tweens.add({
+          targets:
+            this.beatTransitionOverlay,
+          alpha: 0,
+          duration: 260,
+          ease: "Sine.easeOut",
+          onComplete: () => {
+            this.isBeatTransitioning =
+              false;
+          },
+        });
+      },
+    });
+  }
+
+  // ==================================================
   // CINEMATIC BARS
   // ==================================================
 
