@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import VisualFoundation from "./VisualFoundation";
 
 import Monster from "../objects/Monster";
 
@@ -17,6 +18,8 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   create() {
+    this.visualFoundation = new VisualFoundation(this);
+
     let savedData = this.registry.get("playerData");
 
     if (!savedData) {
@@ -81,6 +84,14 @@ class ForestScene extends Phaser.Scene {
     this.activeShieldTurns = 0;
     this.battleSkillButton = null;
 
+    // ==================================================
+    // FOREST QUEST
+    // ==================================================
+
+    this.forestQuest = this.registry.get("forestQuest") || null;
+    this.forestQuestObjects = [];
+    this.forestQuestDialogOpen = false;
+
     this.xpNeeded = 200;
 
     this.obstacles = this.physics.add.staticGroup();
@@ -88,18 +99,41 @@ class ForestScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.E
     );
 
+    // ==================================================
+    // VILLAGE RETURN KEY
+    // ==================================================
+
+    // The E key used to enter this scene must be released first.
+    // We arm the return gate after a short delay, then reset the
+    // Phaser Key state so the same press can never return here.
+    this.forestGateReady = false;
+
+    this.time.delayedCall(500, () => {
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      this.interactKey.reset();
+      this.forestGateReady = true;
+    });
+
     this.createWorld();
     this.createPlayer();
+    this.createVillageGate();
 
-    // Player tidak bisa menembus pohon, batu, atau dinding.
+    // Keep player movement active and collide with forest obstacles.
     this.physics.add.collider(
       this.player,
       this.obstacles
     );
 
-    this.createVillageGate();
+    this.createForestQuestNPC();
     this.createHUD();
     this.updateHUD();
+
+    if (this.forestQuest) {
+      this.showForestQuestHUD();
+    }
   }
 
   // ==================================================
@@ -210,7 +244,7 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createPlayer() {
-    this.player = this.add.circle(400, 470, 25, 0x3182ce);
+    this.player = this.add.circle(400, 400, 25, 0x3182ce);
     this.physics.add.existing(this.player);
     this.player.body.setCollideWorldBounds(true);
     this.playerSpeed = 200;
@@ -249,6 +283,416 @@ class ForestScene extends Phaser.Scene {
       .setDepth(100);
 
     this.interactText.setVisible(false);
+
+    this.visualFoundation.animatePlayer(this.player);
+  }
+
+  // ==================================================
+  // CREATE FOREST QUEST NPC
+  // ==================================================
+
+  createForestQuestNPC() {
+    this.forestQuestNPC = this.add.circle(
+      220,
+      360,
+      24,
+      0xf6c56a
+    );
+
+    this.forestQuestNPC.setDepth(25);
+
+    this.forestQuestNPCLabel = this.add
+      .text(
+        220,
+        397,
+        "Penjaga Isim",
+        {
+          fontSize: "13px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(25);
+
+    this.forestQuestNPCIcon = this.add
+      .text(
+        220,
+        360,
+        "!",
+        {
+          fontSize: "22px",
+          color: "#1A365D",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(26);
+
+    this.visualFoundation.animateNPC([
+      this.forestQuestNPC,
+      this.forestQuestNPCIcon,
+    ]);
+  }
+
+  // ==================================================
+  // SHOW FOREST QUEST DIALOG
+  // ==================================================
+
+  showForestQuestDialog() {
+    if (this.forestQuestDialogOpen) {
+      return;
+    }
+
+    this.forestQuestDialogOpen = true;
+    this.forestQuestObjects = [];
+
+    const overlay = this.add.rectangle(
+      400,
+      300,
+      800,
+      600,
+      0x000000,
+      0.7
+    );
+
+    overlay.setDepth(400);
+
+    const panel = this.add.rectangle(
+      400,
+      300,
+      620,
+      380,
+      0xffffff
+    );
+
+    panel.setDepth(401);
+
+    const title = this.add
+      .text(
+        400,
+        95,
+        "🌳 PENJAGA ISIM",
+        {
+          fontSize: "30px",
+          color: "#1A365D",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(402);
+
+    const message = this.add
+      .text(
+        400,
+        165,
+        "Forest of Isim mulai dipenuhi monster.\n\nKalahkan 2 monster untuk membersihkan\nhutan dan buktikan kemampuan Nahwu-mu!",
+        {
+          fontSize: "18px",
+          color: "#2D3748",
+          align: "center",
+          wordWrap: {
+            width: 520,
+          },
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(402);
+
+    const currentProgress =
+      this.forestQuest && !this.forestQuest.completed
+        ? `Progress saat ini: ${this.forestQuest.progress} / ${this.forestQuest.requiredProgress}`
+        : this.forestQuest && this.forestQuest.completed
+        ? "Quest sudah selesai."
+        : "Quest belum diambil.";
+
+    const progress = this.add
+      .text(
+        400,
+        245,
+        currentProgress,
+        {
+          fontSize: "17px",
+          color: "#718096",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(402);
+
+    const acceptButton = this.add.rectangle(
+      400,
+      335,
+      240,
+      55,
+      0xd4af37
+    );
+
+    acceptButton.setDepth(402);
+    acceptButton.setInteractive({
+      useHandCursor: true,
+    });
+
+    const acceptText = this.add
+      .text(
+        400,
+        335,
+        this.forestQuest && !this.forestQuest.completed
+          ? "LIHAT QUEST"
+          : "TERIMA QUEST",
+        {
+          fontSize: "17px",
+          color: "#1A365D",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(403);
+
+    const closeButton = this.add.rectangle(
+      400,
+      410,
+      200,
+      42,
+      0x1A365D
+    );
+
+    closeButton.setDepth(402);
+    closeButton.setInteractive({
+      useHandCursor: true,
+    });
+
+    const closeText = this.add
+      .text(
+        400,
+        410,
+        "TUTUP",
+        {
+          fontSize: "15px",
+          color: "#ffffff",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(403);
+
+    this.forestQuestObjects.push(
+      overlay,
+      panel,
+      title,
+      message,
+      progress,
+      acceptButton,
+      acceptText,
+      closeButton,
+      closeText
+    );
+
+    acceptButton.on("pointerdown", () => {
+      if (
+        this.forestQuest &&
+        this.forestQuest.completed
+      ) {
+        this.closeForestQuestDialog();
+        return;
+      }
+
+      if (!this.forestQuest) {
+        this.acceptForestQuest();
+      } else {
+        this.closeForestQuestDialog();
+      }
+    });
+
+    closeButton.on("pointerdown", () => {
+      this.closeForestQuestDialog();
+    });
+  }
+
+  // ==================================================
+  // ACCEPT FOREST QUEST
+  // ==================================================
+
+  acceptForestQuest() {
+    this.forestQuest = {
+      id: "forest_isim_clear",
+      title: "Bersihkan Forest of Isim",
+      description:
+        "Kalahkan 2 monster di Forest of Isim.",
+      type: "forestMonster",
+      progress: 0,
+      requiredProgress: 2,
+      reward: {
+        xp: 100,
+        gold: 50,
+      },
+      completed: false,
+    };
+
+    this.registry.set(
+      "forestQuest",
+      this.forestQuest
+    );
+
+    this.closeForestQuestDialog();
+    this.showForestQuestHUD();
+  }
+
+  // ==================================================
+  // CLOSE FOREST QUEST DIALOG
+  // ==================================================
+
+  closeForestQuestDialog() {
+    if (this.forestQuestObjects) {
+      this.forestQuestObjects.forEach(
+        (object) => {
+          if (object) {
+            object.destroy();
+          }
+        }
+      );
+    }
+
+    this.forestQuestObjects = [];
+    this.forestQuestDialogOpen = false;
+  }
+
+  // ==================================================
+  // FOREST QUEST HUD
+  // ==================================================
+
+  showForestQuestHUD() {
+    this.clearForestQuestHUD();
+
+    if (!this.forestQuest) {
+      return;
+    }
+
+    this.forestQuestObjects = [];
+
+    const panel = this.add.rectangle(
+      590,
+      130,
+      330,
+      110,
+      0x1A365D,
+      0.95
+    );
+
+    panel.setDepth(45);
+
+    const title = this.add
+      .text(
+        440,
+        98,
+        "QUEST",
+        {
+          fontSize: "16px",
+          color: "#D4AF37",
+          fontStyle: "bold",
+        }
+      )
+      .setDepth(46);
+
+    const questTitle = this.add
+      .text(
+        440,
+        124,
+        this.forestQuest.title,
+        {
+          fontSize: "14px",
+          color: "#ffffff",
+          fontStyle: "bold",
+          wordWrap: {
+            width: 275,
+          },
+        }
+      )
+      .setDepth(46);
+
+    const progress = this.add
+      .text(
+        440,
+        168,
+        `Monster: ${this.forestQuest.progress} / ${this.forestQuest.requiredProgress}`,
+        {
+          fontSize: "14px",
+          color: "#ffffff",
+        }
+      )
+      .setDepth(46);
+
+    this.forestQuestObjects.push(
+      panel,
+      title,
+      questTitle,
+      progress
+    );
+  }
+
+  // ==================================================
+  // CLEAR FOREST QUEST HUD
+  // ==================================================
+
+  clearForestQuestHUD() {
+    if (this.forestQuestObjects) {
+      this.forestQuestObjects.forEach(
+        (object) => {
+          if (object) {
+            object.destroy();
+          }
+        }
+      );
+    }
+
+    this.forestQuestObjects = [];
+  }
+
+  // ==================================================
+  // UPDATE FOREST QUEST
+  // ==================================================
+
+  updateForestQuestProgress() {
+    if (
+      !this.forestQuest ||
+      this.forestQuest.completed
+    ) {
+      return;
+    }
+
+    this.forestQuest.progress = Math.min(
+      this.forestQuest.progress + 1,
+      this.forestQuest.requiredProgress
+    );
+
+    if (
+      this.forestQuest.progress >=
+      this.forestQuest.requiredProgress
+    ) {
+      this.forestQuest.completed = true;
+
+      this.playerData.gold =
+        Number(this.playerData.gold) +
+        Number(this.forestQuest.reward.gold);
+
+      this.playerData.xp =
+        Number(this.playerData.xp) +
+        Number(this.forestQuest.reward.xp);
+
+      this.registry.set(
+        "playerData",
+        this.playerData
+      );
+
+      this.updateHUD();
+    }
+
+    this.registry.set(
+      "forestQuest",
+      this.forestQuest
+    );
+
+    this.showForestQuestHUD();
   }
 
   // ==================================================
@@ -320,19 +764,47 @@ class ForestScene extends Phaser.Scene {
 
     this.playerLabel.setPosition(this.player.x, this.player.y + 35);
 
-    // ==================================================
-    // MONSTER PROXIMITY
-    // ==================================================
-    //
-    // Monster AI/chasing sementara dimatikan.
-    // Posisi monster tetap, tetapi kita tetap menghitung
-    // jarak monster ke player agar bisa diajak battle.
-    // Ini menghindari kemungkinan loop / proses berat
-    // dari Monster.update() yang sebelumnya membuat game freeze.
-    // ==================================================
+    // Monsters only chase while the player is free to move.
+    this.monsters.forEach((monster) => {
+      if (monster && !monster.isDead()) {
+        monster.update(this.player);
+      }
+    });
 
     this.interactText.setVisible(false);
     this.villageGatePrompt.setVisible(false);
+
+    // Arm the return gate only after the E key has been released.
+    // This prevents the E press used to enter ForestScene from
+    // immediately triggering the return gate.
+    if (!this.forestGateReady) {
+      if (this.interactKey.isUp) {
+        this.forestGateReady = true;
+      }
+    }
+
+    // ==================================================
+    // FOREST QUEST NPC
+    // ==================================================
+
+    if (this.forestQuestNPC) {
+      const npcDistance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.forestQuestNPC.x,
+        this.forestQuestNPC.y
+      );
+
+      if (npcDistance < 85) {
+        this.interactText.setText("[ E ] Bicara Penjaga Isim");
+        this.interactText.setVisible(true);
+
+        if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+          this.showForestQuestDialog();
+          return;
+        }
+      }
+    }
 
     const nearestMonster = this.getNearestMonster();
 
@@ -358,7 +830,10 @@ class ForestScene extends Phaser.Scene {
       this.interactText.setText("[ E ] Kembali ke Nahwu Village");
       this.interactText.setVisible(true);
 
-      if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+      if (
+        this.forestGateReady &&
+        Phaser.Input.Keyboard.JustDown(this.interactKey)
+      ) {
         this.returnToVillage();
         return;
       }
@@ -375,46 +850,11 @@ class ForestScene extends Phaser.Scene {
     }
 
     this.isTransitioning = true;
+    this.forestGateReady = false;
     this.villageGatePrompt.setVisible(false);
     this.interactText.setVisible(false);
+
     this.scene.start("VillageScene");
-  }
-
-  // ==================================================
-  // GET NEAREST MONSTER
-  // ==================================================
-
-  getNearestMonster() {
-    let nearestMonster = null;
-    let nearestDistance = Infinity;
-
-    const interactionDistance = 85;
-
-    this.monsters.forEach((monster) => {
-      if (!monster || monster.isDead()) {
-        return;
-      }
-
-      const distance =
-        Phaser.Math.Distance.Between(
-          this.player.x,
-          this.player.y,
-          monster.x,
-          monster.y
-        );
-
-      // Kita kelola sendiri status nearby agar
-      // tidak bergantung pada Monster.update().
-      monster.isNearby =
-        distance <= interactionDistance;
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestMonster = monster;
-      }
-    });
-
-    return nearestMonster;
   }
 
   // ==================================================
@@ -423,9 +863,15 @@ class ForestScene extends Phaser.Scene {
 
   createTree(x, y) {
     this.add.rectangle(x, y + 30, 18, 45, 0x8b4513);
-    this.add.circle(x, y, 32, 0x1f6b3a);
-    this.add.circle(x - 18, y + 10, 23, 0x2e7d4f);
-    this.add.circle(x + 18, y + 10, 23, 0x2e7d4f);
+    const crown = this.add.circle(x, y, 32, 0x1f6b3a);
+    const crownLeft = this.add.circle(x - 18, y + 10, 23, 0x2e7d4f);
+    const crownRight = this.add.circle(x + 18, y + 10, 23, 0x2e7d4f);
+
+    this.visualFoundation.animateTree([
+      crown,
+      crownLeft,
+      crownRight,
+    ]);
 
     const collider = this.add.rectangle(x, y + 18, 55, 65, 0xffffff, 0);
     this.physics.add.existing(collider, true);
@@ -437,8 +883,10 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createRock(x, y) {
-    this.add.circle(x, y, 18, 0x718096);
-    this.add.circle(x - 8, y - 5, 8, 0xa0aec0);
+    const rock = this.add.circle(x, y, 18, 0x718096);
+    const highlight = this.add.circle(x - 8, y - 5, 8, 0xa0aec0);
+
+    this.visualFoundation.animateRock([rock, highlight]);
 
     const collider = this.add.rectangle(x, y, 42, 36, 0xffffff, 0);
     this.physics.add.existing(collider, true);
@@ -450,9 +898,15 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createBush(x, y) {
-    this.add.circle(x, y, 22, 0x285e3b);
-    this.add.circle(x - 15, y + 5, 16, 0x2f855a);
-    this.add.circle(x + 15, y + 5, 16, 0x2f855a);
+    const bush = this.add.circle(x, y, 22, 0x285e3b);
+    const bushLeft = this.add.circle(x - 15, y + 5, 16, 0x2f855a);
+    const bushRight = this.add.circle(x + 15, y + 5, 16, 0x2f855a);
+
+    this.visualFoundation.animateBush([
+      bush,
+      bushLeft,
+      bushRight,
+    ]);
   }
 
   // ==================================================
@@ -463,6 +917,35 @@ class ForestScene extends Phaser.Scene {
     const wall = this.add.rectangle(x, y, width, height, 0xffffff, 0);
     this.physics.add.existing(wall, true);
     this.obstacles.add(wall);
+  }
+
+  // ==================================================
+  // GET NEAREST MONSTER
+  // ==================================================
+
+  getNearestMonster() {
+    let nearestMonster = null;
+    let nearestDistance = Infinity;
+
+    this.monsters.forEach((monster) => {
+      if (!monster || monster.isDead()) {
+        return;
+      }
+
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        monster.x,
+        monster.y
+      );
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestMonster = monster;
+      }
+    });
+
+    return nearestMonster;
   }
 
   startBattle(
@@ -3019,6 +3502,12 @@ class ForestScene extends Phaser.Scene {
         );
 
         this.updateHUD();
+
+        // ==================================================
+        // FOREST QUEST PROGRESS
+        // ==================================================
+
+        this.updateForestQuestProgress();
 
         // ==================================================
         // VICTORY SCREEN

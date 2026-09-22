@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import VisualFoundation from "../scenes/VisualFoundation.js";
 
 class NPC extends Phaser.GameObjects.Container {
   constructor(scene, x, y, name) {
@@ -10,6 +11,15 @@ class NPC extends Phaser.GameObjects.Container {
 
     // Tambahkan NPC ke Scene
     scene.add.existing(this);
+
+    // =====================================
+    // VISUAL FOUNDATION / IDLE ANIMATION
+    // =====================================
+
+    // Animasi ini hanya mengubah tampilan NPC,
+    // tidak mengubah logic interaksi atau quest.
+    this.visualFoundation = new VisualFoundation(scene);
+    this.visualFoundation.animateNPC([this]);
 
     // =====================================
     // BADAN NPC
@@ -86,6 +96,20 @@ class NPC extends Phaser.GameObjects.Container {
     this.interactionText.setVisible(
       false
     );
+
+    // Prompt interaksi dibuat sedikit "bernapas"
+    // agar terasa lebih hidup saat muncul.
+    this.interactionPulseTween = scene.tweens.add({
+      targets: this.interactionText,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      alpha: 0.88,
+      duration: 650,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+      paused: true,
+    });
   }
 
   // =====================================
@@ -107,12 +131,22 @@ class NPC extends Phaser.GameObjects.Container {
       this.interactionText.setVisible(
         true
       );
+
+      if (this.interactionPulseTween) {
+        this.interactionPulseTween.resume();
+      }
     } else {
       this.isNearby = false;
 
       this.interactionText.setVisible(
         false
       );
+
+      if (this.interactionPulseTween) {
+        this.interactionPulseTween.pause();
+        this.interactionText.setScale(1);
+        this.interactionText.setAlpha(1);
+      }
     }
   }
 

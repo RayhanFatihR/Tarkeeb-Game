@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import VisualFoundation from "./VisualFoundation";
 
 import NPC from "../objects/NPC";
 import Monster from "../objects/Monster";
@@ -21,6 +22,8 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   create() {
+    this.visualFoundation = new VisualFoundation(this);
+
     // ==================================================
     // PLAYER DATA
     // ==================================================
@@ -60,6 +63,20 @@ class VillageScene extends Phaser.Scene {
     ) {
       savedData.inventory = [];
     }
+
+    // REMOVE DUPLICATE EQUIPMENT
+    // Setiap equipment hanya boleh muncul sekali berdasarkan ID.
+    savedData.inventory = savedData.inventory.filter(
+      (item, index, array) =>
+        item &&
+        item.id &&
+        index ===
+          array.findIndex(
+            (other) =>
+              other &&
+              other.id === item.id
+          )
+    );
 
     if (!savedData.equipped) {
       savedData.equipped = {
@@ -242,8 +259,8 @@ class VillageScene extends Phaser.Scene {
     this.grammarMaster =
       new NPC(
         this,
-        180,
-        390,
+        250,
+        420,
         "Grammar Master"
       );
 
@@ -351,14 +368,14 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
 
     this.createHouse(
-      170,
-      220,
+      180,
+      230,
       "Nahwu House"
     );
 
     this.createHouse(
-      600,
-      220,
+      620,
+      230,
       "Grammar House"
     );
 
@@ -366,17 +383,17 @@ class VillageScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(70, 100);
+    this.createTree(80, 100);
 
-    this.createTree(500, 120);
+    this.createTree(720, 100);
 
-    this.createTree(70, 470);
+    this.createTree(80, 500);
 
-    this.createTree(300, 520);
+    this.createTree(720, 500);
 
-    this.createTree(520, 520);
+    this.createTree(150, 520);
 
-    this.createTree(720, 420);
+    this.createTree(650, 520);
 
     // ==================================================
     // CHESTS
@@ -385,20 +402,20 @@ class VillageScene extends Phaser.Scene {
     this.chests = [];
 
     this.createChest(
-      280,
-      400,
+      620,
+      420,
       items.swordOfIsim
     );
 
     this.createChest(
-      540,
-      410,
+      300,
+      500,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      690,
-      330,
+      720,
+      350,
       items.ringOfRafa
     );
 
@@ -415,7 +432,7 @@ class VillageScene extends Phaser.Scene {
     const slime =
       new Monster(
         this,
-        600,
+        580,
         500,
         monsters.nahwuSlime
       );
@@ -427,7 +444,7 @@ class VillageScene extends Phaser.Scene {
     const goblin =
       new Monster(
         this,
-        150,
+        180,
         500,
         monsters.grammarGoblin
       );
@@ -439,8 +456,8 @@ class VillageScene extends Phaser.Scene {
     const golem =
       new Monster(
         this,
-        320,
-        155,
+        700,
+        250,
         monsters.irabGolem
       );
 
@@ -499,6 +516,49 @@ class VillageScene extends Phaser.Scene {
       );
 
     // ==================================================
+    // FOREST ENTRY KEY
+    // ==================================================
+
+    this.forestEntryHandler = (event) => {
+      if (
+        this.isBattleOpen ||
+        this.isQuizOpen ||
+        this.inventoryOpen ||
+        this.npcDialogOpen ||
+        this.questCompleteOpen ||
+        !this.forestGate ||
+        !this.player
+      ) {
+        return;
+      }
+
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.forestGate.x,
+        this.forestGate.y
+      );
+
+      if (distance < 90) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.enterForest();
+      }
+    };
+
+    this.input.keyboard.on(
+      "keydown-E",
+      this.forestEntryHandler
+    );
+
+    this.events.once("shutdown", () => {
+      this.input.keyboard.off(
+        "keydown-E",
+        this.forestEntryHandler
+      );
+    });
+
+    // ==================================================
     // I
     // ==================================================
 
@@ -554,6 +614,8 @@ class VillageScene extends Phaser.Scene {
     this.interactText.setVisible(
       false
     );
+
+    this.visualFoundation.animatePlayer(this.player);
   }
 
   // ==================================================
@@ -564,6 +626,8 @@ class VillageScene extends Phaser.Scene {
     if (!this.player) {
       return;
     }
+
+    this.visualFoundation.syncPlayerVisuals(this.player);
 
     // ==================================================
     // INVENTORY KEY
@@ -837,6 +901,7 @@ class VillageScene extends Phaser.Scene {
         this.grammarMaster.talk();
       }
     }
+
     // ==================================================
     // FOREST GATE
     // ==================================================
@@ -867,20 +932,13 @@ class VillageScene extends Phaser.Scene {
           true
         );
 
-        if (
-          Phaser.Input.Keyboard.JustDown(
-            this.interactKey
-          )
-        ) {
-          this.enterForest();
-          return;
-        }
       } else {
         this.forestGatePrompt.setVisible(
           false
         );
       }
     }
+
   }
 
   // ==================================================
@@ -919,7 +977,7 @@ class VillageScene extends Phaser.Scene {
     this.forestGate =
       this.add.rectangle(
         740,
-        170,
+        300,
         50,
         110,
         0x553c2e
@@ -934,7 +992,7 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           740,
-          95,
+          225,
           "🌳 FOREST",
           {
             fontSize: "14px",
@@ -951,7 +1009,7 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           740,
-          255,
+          390,
           "[ E ] Masuk Forest",
           {
             fontSize: "15px",
@@ -4536,26 +4594,32 @@ class VillageScene extends Phaser.Scene {
       0x8b4513
     );
 
-    this.add.circle(
+    const crown = this.add.circle(
       x,
       y,
       35,
       0x2e7d32
     );
 
-    this.add.circle(
+    const crownLeft = this.add.circle(
       x - 20,
       y + 10,
       25,
       0x388e3c
     );
 
-    this.add.circle(
+    const crownRight = this.add.circle(
       x + 20,
       y + 10,
       25,
       0x388e3c
     );
+
+    this.visualFoundation.animateTree([
+      crown,
+      crownLeft,
+      crownRight,
+    ]);
 
     const collider =
       this.add.rectangle(
@@ -4630,9 +4694,16 @@ class VillageScene extends Phaser.Scene {
         )
         .setOrigin(0.5);
 
+        // ==========================================
+        // CHEST VISUAL ANIMATION
+        // ==========================================
+        this.visualFoundation.animateChest(chest);
+
     this.chests.push(
       chest
     );
+
+    this.visualFoundation.animateChest(chest);
   }
 
   // ==================================================
@@ -4940,9 +5011,19 @@ class VillageScene extends Phaser.Scene {
         ...this.currentChest.reward,
       };
 
-      this.playerData.inventory.push(
-        rewardItem
-      );
+      // Jangan masukkan equipment yang sama lebih dari sekali.
+      const alreadyOwned =
+        this.playerData.inventory.some(
+          (item) =>
+            item &&
+            item.id === rewardItem.id
+        );
+
+      if (!alreadyOwned) {
+        this.playerData.inventory.push(
+          rewardItem
+        );
+      }
     }
 
     this.registry.set(
