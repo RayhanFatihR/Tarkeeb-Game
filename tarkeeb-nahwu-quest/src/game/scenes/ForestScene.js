@@ -135,6 +135,15 @@ class ForestScene extends Phaser.Scene {
     if (this.forestQuest) {
       this.showForestQuestHUD();
     }
+
+    // ==================================================
+    // SCENE ENTRANCE CINEMATIC
+    // ==================================================
+
+    this.visualFoundation.playSceneEntrance(
+      "FOREST OF ISIM",
+      "Chapter II • Hutan Para Penjaga Isim"
+    );
   }
 
   // ==================================================
@@ -866,10 +875,35 @@ class ForestScene extends Phaser.Scene {
 
     this.isTransitioning = true;
     this.forestGateReady = false;
-    this.villageGatePrompt.setVisible(false);
-    this.interactText.setVisible(false);
 
-    this.scene.start("VillageScene");
+    if (
+      this.player &&
+      this.player.body
+    ) {
+      this.player.body.setVelocity(
+        0,
+        0
+      );
+    }
+
+    this.villageGatePrompt.setVisible(
+      false
+    );
+
+    this.interactText.setVisible(
+      false
+    );
+
+    this.visualFoundation.playSceneTransition({
+      title: "NAHWU VILLAGE",
+      subtitle:
+        "Kembali ke tempat perjalanan dimulai",
+      onComplete: () => {
+        this.scene.start(
+          "VillageScene"
+        );
+      },
+    });
   }
 
   // ==================================================

@@ -155,6 +155,9 @@ class VillageScene extends Phaser.Scene {
     this.questCompleteOpen =
       false;
 
+    this.isTransitioning =
+      false;
+
     // ==================================================
     // OBJECT ARRAYS
     // ==================================================
@@ -298,6 +301,15 @@ class VillageScene extends Phaser.Scene {
     if (this.activeQuest) {
       this.showQuestHUD();
     }
+
+    // ==================================================
+    // SCENE ENTRANCE CINEMATIC
+    // ==================================================
+
+    this.visualFoundation.playSceneEntrance(
+      "NAHWU VILLAGE",
+      "Chapter I • Awal perjalanan seorang Grammar Apprentice"
+    );
   }
 
   // ==================================================
@@ -642,6 +654,17 @@ class VillageScene extends Phaser.Scene {
 
     this.visualFoundation.syncPlayerVisuals(this.player);
 
+    if (this.isTransitioning) {
+      if (this.player.body) {
+        this.player.body.setVelocity(
+          0,
+          0
+        );
+      }
+
+      return;
+    }
+
     // ==================================================
     // INVENTORY KEY
     // ==================================================
@@ -985,6 +1008,7 @@ class VillageScene extends Phaser.Scene {
 
   enterForest() {
     if (
+      this.isTransitioning ||
       this.isBattleOpen ||
       this.isQuizOpen ||
       this.inventoryOpen ||
@@ -992,6 +1016,19 @@ class VillageScene extends Phaser.Scene {
       this.questCompleteOpen
     ) {
       return;
+    }
+
+    this.isTransitioning =
+      true;
+
+    if (
+      this.player &&
+      this.player.body
+    ) {
+      this.player.body.setVelocity(
+        0,
+        0
+      );
     }
 
     this.forestGatePrompt.setVisible(
@@ -1002,9 +1039,16 @@ class VillageScene extends Phaser.Scene {
       false
     );
 
-    this.scene.start(
-      "ForestScene"
-    );
+    this.visualFoundation.playSceneTransition({
+      title: "FOREST OF ISIM",
+      subtitle:
+        "Chapter II • Hutan Para Penjaga Isim",
+      onComplete: () => {
+        this.scene.start(
+          "ForestScene"
+        );
+      },
+    });
   }
 
   // ==================================================

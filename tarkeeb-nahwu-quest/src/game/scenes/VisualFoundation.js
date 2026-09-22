@@ -1313,6 +1313,274 @@ export default class VisualFoundation {
     });
   }
 
+
+  // ==================================================
+  // SCENE TRANSITION & CINEMATIC FOUNDATION
+  // Step 1.10
+  // ==================================================
+
+  playSceneEntrance(
+    title,
+    subtitle = ""
+  ) {
+    const overlay =
+      this.scene.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x0b1220,
+        1
+      );
+
+    overlay
+      .setDepth(3000)
+      .setScrollFactor(0);
+
+    const brand =
+      this.scene.add
+        .text(
+          400,
+          205,
+          "TARKEEB: NAHWU QUEST",
+          {
+            fontSize: "13px",
+            color: "#D4AF37",
+            fontStyle: "bold",
+            letterSpacing: 2,
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(3001)
+        .setScrollFactor(0)
+        .setAlpha(0);
+
+    const titleText =
+      this.scene.add
+        .text(
+          400,
+          270,
+          title,
+          {
+            fontSize: "34px",
+            color: "#FFFFFF",
+            fontStyle: "bold",
+            align: "center",
+            stroke: "#1A365D",
+            strokeThickness: 5,
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(3001)
+        .setScrollFactor(0)
+        .setAlpha(0)
+        .setScale(0.92);
+
+    const subtitleText =
+      this.scene.add
+        .text(
+          400,
+          320,
+          subtitle,
+          {
+            fontSize: "15px",
+            color: "#CBD5E0",
+            fontStyle: "italic",
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(3001)
+        .setScrollFactor(0)
+        .setAlpha(0);
+
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0,
+      delay: 650,
+      duration: 650,
+      ease: "Sine.easeInOut",
+    });
+
+    this.tweens.add({
+      targets: brand,
+      alpha: 1,
+      y: 198,
+      duration: 300,
+      ease: "Sine.easeOut",
+      yoyo: true,
+      hold: 650,
+    });
+
+    this.tweens.add({
+      targets: titleText,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      y: 260,
+      duration: 360,
+      ease: "Back.easeOut",
+      yoyo: true,
+      hold: 600,
+    });
+
+    this.tweens.add({
+      targets: subtitleText,
+      alpha: 1,
+      y: 312,
+      delay: 120,
+      duration: 300,
+      ease: "Sine.easeOut",
+      yoyo: true,
+      hold: 520,
+    });
+
+    this.scene.time.delayedCall(
+      1450,
+      () => {
+        [
+          overlay,
+          brand,
+          titleText,
+          subtitleText,
+        ].forEach((object) => {
+          if (
+            object &&
+            object.active
+          ) {
+            object.destroy();
+          }
+        });
+      }
+    );
+  }
+
+  playSceneTransition({
+    title,
+    subtitle = "",
+    onComplete,
+  }) {
+    if (
+      this.sceneTransitionActive
+    ) {
+      return;
+    }
+
+    this.sceneTransitionActive =
+      true;
+
+    const overlay =
+      this.scene.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x0b1220,
+        0
+      );
+
+    overlay
+      .setDepth(3100)
+      .setScrollFactor(0);
+
+    const line =
+      this.scene.add.rectangle(
+        400,
+        335,
+        0,
+        2,
+        0xd4af37,
+        0.95
+      );
+
+    line
+      .setDepth(3101)
+      .setScrollFactor(0);
+
+    const titleText =
+      this.scene.add
+        .text(
+          400,
+          265,
+          title,
+          {
+            fontSize: "30px",
+            color: "#FFFFFF",
+            fontStyle: "bold",
+            align: "center",
+            stroke: "#1A365D",
+            strokeThickness: 5,
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(3101)
+        .setScrollFactor(0)
+        .setAlpha(0)
+        .setScale(0.92);
+
+    const subtitleText =
+      this.scene.add
+        .text(
+          400,
+          305,
+          subtitle,
+          {
+            fontSize: "14px",
+            color: "#D4AF37",
+            fontStyle: "italic",
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(3101)
+        .setScrollFactor(0)
+        .setAlpha(0);
+
+    this.tweens.add({
+      targets: overlay,
+      alpha: 1,
+      duration: 360,
+      ease: "Sine.easeInOut",
+    });
+
+    this.tweens.add({
+      targets: titleText,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 330,
+      ease: "Back.easeOut",
+    });
+
+    this.tweens.add({
+      targets: subtitleText,
+      alpha: 1,
+      delay: 100,
+      duration: 260,
+      ease: "Sine.easeOut",
+    });
+
+    this.tweens.add({
+      targets: line,
+      width: 260,
+      delay: 120,
+      duration: 320,
+      ease: "Power2",
+    });
+
+    this.scene.time.delayedCall(
+      760,
+      () => {
+        if (
+          typeof onComplete ===
+          "function"
+        ) {
+          onComplete();
+        }
+      }
+    );
+  }
+
   // ==================================================
   // TITLE
   // ==================================================
