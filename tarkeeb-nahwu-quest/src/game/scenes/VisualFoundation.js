@@ -408,6 +408,381 @@ export default class VisualFoundation {
     }
   }
 
+
+  // ==================================================
+  // BATTLE VISUALS
+  // Step 1.8: Attack, Hit & Death Animation
+  // ==================================================
+
+  animateBattleEntry(
+    playerVisual,
+    monsterVisual
+  ) {
+    const visuals = [
+      playerVisual,
+      monsterVisual,
+    ].filter(Boolean);
+
+    visuals.forEach((visual) => {
+      visual.setData(
+        "battleBaseX",
+        visual.x
+      );
+
+      visual.setData(
+        "battleBaseY",
+        visual.y
+      );
+
+      visual.setAlpha(0);
+      visual.setScale(0.45);
+    });
+
+    if (playerVisual) {
+      this.tweens.add({
+        targets: playerVisual,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 320,
+        ease: "Back.easeOut",
+      });
+    }
+
+    if (monsterVisual) {
+      this.tweens.add({
+        targets: monsterVisual,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 360,
+        delay: 80,
+        ease: "Back.easeOut",
+      });
+    }
+  }
+
+  playPlayerAttack(
+    playerVisual,
+    monsterVisual,
+    critical = false
+  ) {
+    if (
+      !playerVisual ||
+      !monsterVisual ||
+      !playerVisual.active ||
+      !monsterVisual.active
+    ) {
+      return;
+    }
+
+    const playerBaseX =
+      playerVisual.getData("battleBaseX") ??
+      playerVisual.x;
+
+    const playerBaseY =
+      playerVisual.getData("battleBaseY") ??
+      playerVisual.y;
+
+    const monsterBaseX =
+      monsterVisual.getData("battleBaseX") ??
+      monsterVisual.x;
+
+    const monsterBaseY =
+      monsterVisual.getData("battleBaseY") ??
+      monsterVisual.y;
+
+    this.tweens.killTweensOf(
+      playerVisual
+    );
+
+    playerVisual.setPosition(
+      playerBaseX,
+      playerBaseY
+    );
+
+    // Player maju menyerang lalu kembali.
+    this.tweens.add({
+      targets: playerVisual,
+      x: playerBaseX + 65,
+      scaleX: critical ? 1.18 : 1.10,
+      scaleY: critical ? 1.18 : 1.10,
+      duration: critical ? 115 : 135,
+      ease: "Power2",
+      yoyo: true,
+      onComplete: () => {
+        if (
+          playerVisual &&
+          playerVisual.active
+        ) {
+          playerVisual.setPosition(
+            playerBaseX,
+            playerBaseY
+          );
+
+          playerVisual.setScale(1);
+        }
+      },
+    });
+
+    // Slash visual.
+    const slash =
+      this.scene.add.rectangle(
+        (playerBaseX + monsterBaseX) / 2,
+        (playerBaseY + monsterBaseY) / 2,
+        critical ? 52 : 42,
+        critical ? 9 : 6,
+        critical
+          ? 0xf6c453
+          : 0xffffff,
+        0.95
+      );
+
+    slash.setAngle(-35);
+
+    slash.setDepth(
+      Math.max(
+        playerVisual.depth || 0,
+        monsterVisual.depth || 0
+      ) + 2
+    );
+
+    this.tweens.add({
+      targets: slash,
+      x: slash.x + 32,
+      y: slash.y - 15,
+      scaleX: 1.35,
+      alpha: 0,
+      duration: critical ? 260 : 220,
+      ease: "Power2",
+      onComplete: () => {
+        if (slash && slash.active) {
+          slash.destroy();
+        }
+      },
+    });
+
+    this.playMonsterHit(
+      monsterVisual,
+      critical
+    );
+  }
+
+  playMonsterHit(
+    monsterVisual,
+    critical = false
+  ) {
+    if (
+      !monsterVisual ||
+      !monsterVisual.active
+    ) {
+      return;
+    }
+
+    const baseX =
+      monsterVisual.getData("battleBaseX") ??
+      monsterVisual.x;
+
+    const baseY =
+      monsterVisual.getData("battleBaseY") ??
+      monsterVisual.y;
+
+    this.tweens.killTweensOf(
+      monsterVisual
+    );
+
+    monsterVisual.setPosition(
+      baseX,
+      baseY
+    );
+
+    // Shake + squash ketika kena serang.
+    this.tweens.add({
+      targets: monsterVisual,
+      x: baseX + 10,
+      scaleX: critical ? 1.22 : 1.12,
+      scaleY: critical ? 0.78 : 0.88,
+      alpha: 0.60,
+      duration: 55,
+      ease: "Linear",
+      yoyo: true,
+      repeat: critical ? 3 : 2,
+      onComplete: () => {
+        if (
+          monsterVisual &&
+          monsterVisual.active
+        ) {
+          monsterVisual.setPosition(
+            baseX,
+            baseY
+          );
+
+          monsterVisual.setScale(1);
+          monsterVisual.setAlpha(1);
+        }
+      },
+    });
+  }
+
+  playMonsterAttack(
+    monsterVisual,
+    playerVisual
+  ) {
+    if (
+      !monsterVisual ||
+      !playerVisual ||
+      !monsterVisual.active ||
+      !playerVisual.active
+    ) {
+      return;
+    }
+
+    const monsterBaseX =
+      monsterVisual.getData("battleBaseX") ??
+      monsterVisual.x;
+
+    const monsterBaseY =
+      monsterVisual.getData("battleBaseY") ??
+      monsterVisual.y;
+
+    const playerBaseX =
+      playerVisual.getData("battleBaseX") ??
+      playerVisual.x;
+
+    const playerBaseY =
+      playerVisual.getData("battleBaseY") ??
+      playerVisual.y;
+
+    this.tweens.killTweensOf(
+      monsterVisual
+    );
+
+    this.tweens.killTweensOf(
+      playerVisual
+    );
+
+    monsterVisual.setPosition(
+      monsterBaseX,
+      monsterBaseY
+    );
+
+    playerVisual.setPosition(
+      playerBaseX,
+      playerBaseY
+    );
+
+    // Monster menerjang ke arah player.
+    this.tweens.add({
+      targets: monsterVisual,
+      x: monsterBaseX - 55,
+      scaleX: 1.10,
+      scaleY: 1.10,
+      duration: 130,
+      ease: "Power2",
+      yoyo: true,
+      onComplete: () => {
+        if (
+          monsterVisual &&
+          monsterVisual.active
+        ) {
+          monsterVisual.setPosition(
+            monsterBaseX,
+            monsterBaseY
+          );
+
+          monsterVisual.setScale(1);
+        }
+      },
+    });
+
+    // Player terkena hit.
+    this.tweens.add({
+      targets: playerVisual,
+      x: playerBaseX - 8,
+      alpha: 0.62,
+      scaleX: 1.10,
+      scaleY: 0.90,
+      duration: 55,
+      ease: "Linear",
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        if (
+          playerVisual &&
+          playerVisual.active
+        ) {
+          playerVisual.setPosition(
+            playerBaseX,
+            playerBaseY
+          );
+
+          playerVisual.setScale(1);
+          playerVisual.setAlpha(1);
+        }
+      },
+    });
+  }
+
+  playMonsterDeath(
+    monsterVisual
+  ) {
+    if (
+      !monsterVisual ||
+      !monsterVisual.active
+    ) {
+      return;
+    }
+
+    this.tweens.killTweensOf(
+      monsterVisual
+    );
+
+    const baseY =
+      monsterVisual.getData("battleBaseY") ??
+      monsterVisual.y;
+
+    this.tweens.add({
+      targets: monsterVisual,
+      y: baseY + 28,
+      angle: 24,
+      scaleX: 0.35,
+      scaleY: 0.35,
+      alpha: 0,
+      duration: 560,
+      ease: "Back.easeIn",
+    });
+  }
+
+  playPlayerDefeat(
+    playerVisual
+  ) {
+    if (
+      !playerVisual ||
+      !playerVisual.active
+    ) {
+      return;
+    }
+
+    this.tweens.killTweensOf(
+      playerVisual
+    );
+
+    const baseY =
+      playerVisual.getData("battleBaseY") ??
+      playerVisual.y;
+
+    this.tweens.add({
+      targets: playerVisual,
+      y: baseY + 25,
+      angle: -22,
+      scaleX: 0.65,
+      scaleY: 0.65,
+      alpha: 0.45,
+      duration: 520,
+      ease: "Power2",
+    });
+  }
+
   // ==================================================
   // NPC
   // ==================================================

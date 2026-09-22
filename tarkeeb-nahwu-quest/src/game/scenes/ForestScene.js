@@ -1302,6 +1302,102 @@ class ForestScene extends Phaser.Scene {
     );
 
     // ==================================================
+    // BATTLE CHARACTER VISUALS
+    // ==================================================
+
+    this.battlePlayerVisual =
+      this.add.container(
+        150,
+        265
+      );
+
+    const battlePlayerBody =
+      this.add.circle(
+        0,
+        0,
+        22,
+        0x3182ce
+      );
+
+    const battlePlayerMark =
+      this.add
+        .text(
+          0,
+          0,
+          "⚔",
+          {
+            fontSize: "19px",
+            color: "#ffffff",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(0.5);
+
+    this.battlePlayerVisual.add([
+      battlePlayerBody,
+      battlePlayerMark,
+    ]);
+
+    this.battlePlayerVisual.setDepth(
+      603
+    );
+
+    this.battleMonsterVisual =
+      this.add.container(
+        650,
+        150
+      );
+
+    const battleMonsterBody =
+      this.add.circle(
+        0,
+        0,
+        22,
+        0xc53030
+      );
+
+    const battleMonsterEyeLeft =
+      this.add.circle(
+        -7,
+        -3,
+        3,
+        0xffffff
+      );
+
+    const battleMonsterEyeRight =
+      this.add.circle(
+        7,
+        -3,
+        3,
+        0xffffff
+      );
+
+    const battleMonsterMouth =
+      this.add.rectangle(
+        0,
+        8,
+        14,
+        3,
+        0x742a2a
+      );
+
+    this.battleMonsterVisual.add([
+      battleMonsterBody,
+      battleMonsterEyeLeft,
+      battleMonsterEyeRight,
+      battleMonsterMouth,
+    ]);
+
+    this.battleMonsterVisual.setDepth(
+      603
+    );
+
+    this.visualFoundation.animateBattleEntry(
+      this.battlePlayerVisual,
+      this.battleMonsterVisual
+    );
+
+    // ==================================================
     // ATTACK
     // ==================================================
 
@@ -2254,6 +2350,16 @@ class ForestScene extends Phaser.Scene {
       );
 
       // ------------------------------------------------
+      // ATTACK / HIT VISUAL
+      // ------------------------------------------------
+
+      this.visualFoundation.playPlayerAttack(
+        this.battlePlayerVisual,
+        this.battleMonsterVisual,
+        isCritical
+      );
+
+      // ------------------------------------------------
       // LOG
       // ------------------------------------------------
 
@@ -3103,6 +3209,12 @@ class ForestScene extends Phaser.Scene {
       damage
     );
 
+    this.visualFoundation.playPlayerAttack(
+      this.battlePlayerVisual,
+      this.battleMonsterVisual,
+      true
+    );
+
     this.battleLogText.setText(
       `✨ POWER STRIKE!\n⚔️ Damage: ${damage}`
     );
@@ -3389,6 +3501,15 @@ class ForestScene extends Phaser.Scene {
     }
 
     // ==================================================
+    // MONSTER ATTACK / PLAYER HIT VISUAL
+    // ==================================================
+
+    this.visualFoundation.playMonsterAttack(
+      this.battleMonsterVisual,
+      this.battlePlayerVisual
+    );
+
+    // ==================================================
     // LOG
     // ==================================================
 
@@ -3437,6 +3558,10 @@ class ForestScene extends Phaser.Scene {
     );
 
     updateBattleUI();
+
+    this.visualFoundation.playMonsterDeath(
+      this.battleMonsterVisual
+    );
 
     // Tunggu agar HP 0 terlihat
     this.time.delayedCall(
@@ -3561,6 +3686,10 @@ class ForestScene extends Phaser.Scene {
 
     this.battleLogText.setText(
       "💀 Kamu kalah dalam pertarungan!"
+    );
+
+    this.visualFoundation.playPlayerDefeat(
+      this.battlePlayerVisual
     );
 
     this.time.delayedCall(
@@ -3780,6 +3909,42 @@ class ForestScene extends Phaser.Scene {
       this.skillObjects = [];
     }
 
+    // ==================================================
+    // CLEANUP BATTLE CHARACTER VISUALS
+    // ==================================================
+    // Step 1.8 fix:
+    // battlePlayerVisual dan battleMonsterVisual dibuat sebagai
+    // Container terpisah dan sebelumnya belum masuk battleObjects.
+    // Karena itu avatar pedang / monster bisa tertinggal di map.
+
+    if (
+      this.battlePlayerVisual &&
+      this.battlePlayerVisual.active
+    ) {
+      this.tweens.killTweensOf(
+        this.battlePlayerVisual
+      );
+
+      this.battlePlayerVisual.destroy();
+    }
+
+    if (
+      this.battleMonsterVisual &&
+      this.battleMonsterVisual.active
+    ) {
+      this.tweens.killTweensOf(
+        this.battleMonsterVisual
+      );
+
+      this.battleMonsterVisual.destroy();
+    }
+
+    this.battlePlayerVisual =
+      null;
+
+    this.battleMonsterVisual =
+      null;
+
     if (
       !this.battleObjects
     ) {
@@ -3804,6 +3969,12 @@ class ForestScene extends Phaser.Scene {
       null;
 
     this.battleMonsterHPText =
+      null;
+
+    this.battlePlayerVisual =
+      null;
+
+    this.battleMonsterVisual =
       null;
 
     this.battleComboText =
