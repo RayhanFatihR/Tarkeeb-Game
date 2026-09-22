@@ -2477,6 +2477,11 @@ class VillageScene extends Phaser.Scene {
         );
       }
 
+      this.visualFoundation.playComboEffect(
+        this.battleCombo,
+        this.battleComboText
+      );
+
       // ------------------------------------------------
       // ATTACK
       // ------------------------------------------------
@@ -3412,6 +3417,11 @@ class VillageScene extends Phaser.Scene {
       damage
     );
 
+    this.visualFoundation.playPowerStrikeEffect(
+      this.battlePlayerVisual,
+      this.battleMonsterVisual
+    );
+
     this.visualFoundation.playPlayerAttack(
       this.battlePlayerVisual,
       this.battleMonsterVisual,
@@ -3499,6 +3509,10 @@ class VillageScene extends Phaser.Scene {
 
     this.battleLogText.setText(
       "🛡️ GRAMMAR SHIELD AKTIF!\nDamage monster berikutnya -50%."
+    );
+
+    this.visualFoundation.playShieldEffect(
+      this.battlePlayerVisual
     );
 
     updateBattleUI();
@@ -3787,6 +3801,10 @@ class VillageScene extends Phaser.Scene {
     updateBattleUI();
 
     this.visualFoundation.playMonsterDeath(
+      this.battleMonsterVisual
+    );
+
+    this.visualFoundation.playVictoryEffect(
       this.battleMonsterVisual
     );
 

@@ -566,6 +566,12 @@ export default class VisualFoundation {
       monsterVisual,
       critical
     );
+
+    this.playImpactEffect(
+      monsterBaseX,
+      monsterBaseY,
+      critical
+    );
   }
 
   playMonsterHit(
@@ -721,6 +727,12 @@ export default class VisualFoundation {
         }
       },
     });
+
+    this.playImpactEffect(
+      playerBaseX,
+      playerBaseY,
+      false
+    );
   }
 
   playMonsterDeath(
@@ -781,6 +793,506 @@ export default class VisualFoundation {
       duration: 520,
       ease: "Power2",
     });
+  }
+
+
+  // ==================================================
+  // BATTLE POLISH
+  // Step 1.9: impact, combo, skill & victory effects
+  // ==================================================
+
+  playImpactEffect(
+    x = 400,
+    y = 220,
+    critical = false
+  ) {
+    const camera =
+      this.scene.cameras?.main;
+
+    if (camera) {
+      camera.shake(
+        critical ? 150 : 90,
+        critical ? 0.008 : 0.004
+      );
+    }
+
+    const flash =
+      this.scene.add.rectangle(
+        400,
+        300,
+        800,
+        600,
+        critical
+          ? 0xf6c453
+          : 0xffffff,
+        critical
+          ? 0.13
+          : 0.08
+      );
+
+    flash.setDepth(890);
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration:
+        critical
+          ? 180
+          : 120,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          flash &&
+          flash.active
+        ) {
+          flash.destroy();
+        }
+      },
+    });
+
+    const burst =
+      this.scene.add.circle(
+        x,
+        y,
+        critical
+          ? 22
+          : 16,
+        critical
+          ? 0xf6c453
+          : 0xffffff,
+        0.14
+      );
+
+    burst.setStrokeStyle(
+      critical
+        ? 5
+        : 3,
+      critical
+        ? 0xf6c453
+        : 0xffffff,
+      0.95
+    );
+
+    burst.setDepth(891);
+
+    this.tweens.add({
+      targets: burst,
+      scaleX:
+        critical
+          ? 3.2
+          : 2.4,
+      scaleY:
+        critical
+          ? 3.2
+          : 2.4,
+      alpha: 0,
+      duration:
+        critical
+          ? 260
+          : 190,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          burst &&
+          burst.active
+        ) {
+          burst.destroy();
+        }
+      },
+    });
+  }
+
+  playComboEffect(
+    combo,
+    comboText
+  ) {
+    if (
+      !comboText ||
+      !comboText.active ||
+      combo < 2
+    ) {
+      return;
+    }
+
+    this.tweens.killTweensOf(
+      comboText
+    );
+
+    comboText.setScale(1);
+
+    this.tweens.add({
+      targets: comboText,
+      scaleX:
+        combo >= 3
+          ? 1.28
+          : 1.16,
+      scaleY:
+        combo >= 3
+          ? 1.28
+          : 1.16,
+      duration: 120,
+      ease: "Back.easeOut",
+      yoyo: true,
+    });
+
+    const comboPopup =
+      this.scene.add
+        .text(
+          400,
+          245,
+          combo >= 3
+            ? `🔥 COMBO x${combo}!`
+            : `COMBO x${combo}!`,
+          {
+            fontSize:
+              combo >= 3
+                ? "27px"
+                : "22px",
+            color:
+              combo >= 3
+                ? "#F6C453"
+                : "#FFFFFF",
+            fontStyle: "bold",
+            stroke: "#1A365D",
+            strokeThickness: 5,
+          }
+        )
+        .setOrigin(0.5);
+
+    comboPopup.setDepth(892);
+    comboPopup.setScale(0.72);
+
+    this.tweens.add({
+      targets: comboPopup,
+      y: 215,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      alpha: 0,
+      duration: 620,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          comboPopup &&
+          comboPopup.active
+        ) {
+          comboPopup.destroy();
+        }
+      },
+    });
+  }
+
+  playPowerStrikeEffect(
+    playerVisual,
+    monsterVisual
+  ) {
+    if (
+      !playerVisual ||
+      !monsterVisual ||
+      !playerVisual.active ||
+      !monsterVisual.active
+    ) {
+      return;
+    }
+
+    const aura =
+      this.scene.add.circle(
+        playerVisual.x,
+        playerVisual.y,
+        30,
+        0xf6c453,
+        0.08
+      );
+
+    aura.setStrokeStyle(
+      5,
+      0xf6c453,
+      0.95
+    );
+
+    aura.setDepth(
+      (playerVisual.depth || 603) + 1
+    );
+
+    this.tweens.add({
+      targets: aura,
+      scaleX: 2.6,
+      scaleY: 2.6,
+      alpha: 0,
+      duration: 360,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          aura &&
+          aura.active
+        ) {
+          aura.destroy();
+        }
+      },
+    });
+
+    const skillText =
+      this.scene.add
+        .text(
+          400,
+          205,
+          "⚡ POWER STRIKE!",
+          {
+            fontSize: "26px",
+            color: "#F6C453",
+            fontStyle: "bold",
+            stroke: "#1A365D",
+            strokeThickness: 5,
+          }
+        )
+        .setOrigin(0.5);
+
+    skillText.setDepth(893);
+    skillText.setScale(0.75);
+
+    this.tweens.add({
+      targets: skillText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      y: 180,
+      alpha: 0,
+      duration: 620,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        if (
+          skillText &&
+          skillText.active
+        ) {
+          skillText.destroy();
+        }
+      },
+    });
+
+    this.playImpactEffect(
+      monsterVisual.x,
+      monsterVisual.y,
+      true
+    );
+  }
+
+  playShieldEffect(
+    playerVisual
+  ) {
+    if (
+      !playerVisual ||
+      !playerVisual.active
+    ) {
+      return;
+    }
+
+    const shieldOuter =
+      this.scene.add.circle(
+        playerVisual.x,
+        playerVisual.y,
+        28,
+        0x3182ce,
+        0.06
+      );
+
+    shieldOuter.setStrokeStyle(
+      5,
+      0x63b3ed,
+      0.95
+    );
+
+    shieldOuter.setDepth(
+      (playerVisual.depth || 603) + 1
+    );
+
+    const shieldInner =
+      this.scene.add.circle(
+        playerVisual.x,
+        playerVisual.y,
+        20,
+        0x90cdf4,
+        0.08
+      );
+
+    shieldInner.setStrokeStyle(
+      2,
+      0xffffff,
+      0.85
+    );
+
+    shieldInner.setDepth(
+      (playerVisual.depth || 603) + 2
+    );
+
+    this.tweens.add({
+      targets: shieldOuter,
+      scaleX: 1.8,
+      scaleY: 1.8,
+      alpha: 0,
+      duration: 650,
+      ease: "Sine.easeOut",
+      onComplete: () => {
+        if (
+          shieldOuter &&
+          shieldOuter.active
+        ) {
+          shieldOuter.destroy();
+        }
+      },
+    });
+
+    this.tweens.add({
+      targets: shieldInner,
+      scaleX: 1.45,
+      scaleY: 1.45,
+      alpha: 0,
+      duration: 520,
+      ease: "Sine.easeOut",
+      onComplete: () => {
+        if (
+          shieldInner &&
+          shieldInner.active
+        ) {
+          shieldInner.destroy();
+        }
+      },
+    });
+
+    const shieldText =
+      this.scene.add
+        .text(
+          playerVisual.x,
+          playerVisual.y - 45,
+          "🛡 SHIELD",
+          {
+            fontSize: "18px",
+            color: "#90CDF4",
+            fontStyle: "bold",
+            stroke: "#1A365D",
+            strokeThickness: 4,
+          }
+        )
+        .setOrigin(0.5);
+
+    shieldText.setDepth(893);
+
+    this.tweens.add({
+      targets: shieldText,
+      y: shieldText.y - 20,
+      alpha: 0,
+      duration: 620,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          shieldText &&
+          shieldText.active
+        ) {
+          shieldText.destroy();
+        }
+      },
+    });
+  }
+
+  playVictoryEffect(
+    monsterVisual
+  ) {
+    const camera =
+      this.scene.cameras?.main;
+
+    if (camera) {
+      camera.shake(
+        180,
+        0.006
+      );
+    }
+
+    const originX =
+      monsterVisual?.x ?? 650;
+
+    const originY =
+      monsterVisual?.y ?? 150;
+
+    const burst =
+      this.scene.add.circle(
+        originX,
+        originY,
+        24,
+        0xf6c453,
+        0.10
+      );
+
+    burst.setStrokeStyle(
+      5,
+      0xf6c453,
+      0.95
+    );
+
+    burst.setDepth(892);
+
+    this.tweens.add({
+      targets: burst,
+      scaleX: 4,
+      scaleY: 4,
+      alpha: 0,
+      duration: 520,
+      ease: "Power2",
+      onComplete: () => {
+        if (
+          burst &&
+          burst.active
+        ) {
+          burst.destroy();
+        }
+      },
+    });
+
+    const directions = [
+      [-55, -35],
+      [-25, -60],
+      [20, -58],
+      [55, -30],
+      [-58, 18],
+      [58, 18],
+      [-25, 52],
+      [28, 50],
+    ];
+
+    directions.forEach(
+      ([dx, dy], index) => {
+        const spark =
+          this.scene.add.circle(
+            originX,
+            originY,
+            index % 2 === 0
+              ? 5
+              : 4,
+            index % 3 === 0
+              ? 0xffffff
+              : 0xf6c453,
+            0.95
+          );
+
+        spark.setDepth(893);
+
+        this.tweens.add({
+          targets: spark,
+          x: originX + dx,
+          y: originY + dy,
+          scaleX: 0.25,
+          scaleY: 0.25,
+          alpha: 0,
+          duration:
+            420 + index * 20,
+          ease: "Power2",
+          onComplete: () => {
+            if (
+              spark &&
+              spark.active
+            ) {
+              spark.destroy();
+            }
+          },
+        });
+      }
+    );
   }
 
   // ==================================================
