@@ -25,6 +25,11 @@ import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
 import {
+  getEquipmentAttackBonus,
+  getEquipmentDefenseBonus,
+  getEquipmentXPBonus,
+} from "../data/equipmentStats";
+import {
   AREA_CONFIG,
   getGameProgress,
   markChestOpened,
@@ -5732,54 +5737,12 @@ class ForestScene extends Phaser.Scene {
   }
 
   getPlayerAttack() {
-    let attack =
-      this.playerBaseAttack;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return attack;
-    }
-
-    const weaponId =
-      this.playerData.equipped
-        .Weapon;
-
-    if (!weaponId) {
-      return attack;
-    }
-
-    const weapon =
-      this.playerData.inventory.find(
-        (item) =>
-          item &&
-          item.id ===
-            weaponId
-      );
-
-    if (!weapon) {
-      return attack;
-    }
-
-    const rarity =
-      String(
-        weapon.rarity ||
-          "Common"
-      ).toLowerCase();
-
-    const attackBonus = {
-      common: 5,
-      rare: 10,
-      epic: 15,
-      legendary: 25,
-    };
-
-    attack +=
-      attackBonus[
-        rarity
-      ] || 0;
-
-    return attack;
+    return (
+      this.playerBaseAttack +
+      getEquipmentAttackBonus(
+        this.playerData
+      )
+    );
   }
 
   getLevelTitle(
@@ -5802,133 +5765,16 @@ class ForestScene extends Phaser.Scene {
   getTotalXPBonus(
     questionType = "isim"
   ) {
-    let totalBonus = 0;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return 0;
-    }
-
-    const slots = [
-      "Weapon",
-      "Armor",
-      "Accessory",
-    ];
-
-    slots.forEach(
-      (slot) => {
-        const equippedId =
-          this.playerData.equipped[
-            slot
-          ];
-
-        if (!equippedId) {
-          return;
-        }
-
-        const item =
-          this.playerData.inventory.find(
-            (inventoryItem) =>
-              inventoryItem &&
-              inventoryItem.id ===
-                equippedId
-          );
-
-        if (!item) {
-          return;
-        }
-
-        const effectType =
-          item.effectType;
-
-        const effectValue =
-          Number(
-            item.effectValue
-          ) || 0;
-
-        if (
-          effectType ===
-            "isimXp" &&
-          questionType ===
-            "isim"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-
-        if (
-          effectType ===
-          "nahwuXp"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-
-        if (
-          effectType ===
-          "allXp"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-      }
+    return getEquipmentXPBonus(
+      this.playerData,
+      questionType
     );
-
-    return totalBonus;
   }
 
   getTotalDefense() {
-    let totalDefense = 0;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return 0;
-    }
-
-    const slots = [
-      "Weapon",
-      "Armor",
-      "Accessory",
-    ];
-
-    slots.forEach(
-      (slot) => {
-        const equippedId =
-          this.playerData.equipped[
-            slot
-          ];
-
-        if (!equippedId) {
-          return;
-        }
-
-        const item =
-          this.playerData.inventory.find(
-            (inventoryItem) =>
-              inventoryItem &&
-              inventoryItem.id ===
-                equippedId
-          );
-
-        if (!item) {
-          return;
-        }
-
-        if (
-          item.effectType ===
-          "defense"
-        ) {
-          totalDefense +=
-            Number(
-              item.effectValue
-            ) || 0;
-        }
-      }
+    return getEquipmentDefenseBonus(
+      this.playerData
     );
-
-    return totalDefense;
   }
 
   addXP(

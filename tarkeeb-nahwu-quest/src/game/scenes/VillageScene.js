@@ -32,6 +32,15 @@ import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
 import {
+  getEquipmentAttackBonus,
+  getEquipmentDefenseBonus,
+  getEquipmentXPBonus,
+} from "../data/equipmentStats";
+import {
+  getShopEntries,
+  SHOP_TIER_INFO,
+} from "../data/shopCatalog";
+import {
   getGameProgress,
   markMonsterDefeated,
   markQuestCompleted,
@@ -40,6 +49,8 @@ import {
   isAreaReadyToComplete,
   completeAreaAndUnlockNext,
   setCurrentArea,
+  isShopItemPurchased,
+  markShopItemPurchased,
 } from "../data/progression";
 
 class VillageScene extends Phaser.Scene {
@@ -276,6 +287,12 @@ class VillageScene extends Phaser.Scene {
 
     this.inventoryOpen = false;
 
+    // Step 2G.2 — Merchant / Shop UI state.
+    this.shopOpen = false;
+    this.shopObjects = [];
+    this.shopTierPage = 1;
+    this.shopFeedbackText = null;
+
     this.npcDialogOpen = false;
 
     this.questCompleteOpen =
@@ -399,6 +416,23 @@ class VillageScene extends Phaser.Scene {
 
     this.applyNPCPixelVisual(
       this.grammarMaster,
+      "grammarMasterPixel"
+    );
+
+    // ==================================================
+    // MERCHANT — STEP 2G.2
+    // ==================================================
+
+    this.merchant =
+      new NPC(
+        this,
+        112,
+        360,
+        "Pedagang Tarkeeb"
+      );
+
+    this.applyMerchantPixelVisual(
+      this.merchant,
       "grammarMasterPixel"
     );
 
@@ -765,6 +799,11 @@ class VillageScene extends Phaser.Scene {
         Phaser.Input.Keyboard.KeyCodes.I
       );
 
+    this.shopCloseKey =
+      this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.ESC
+      );
+
     // ==================================================
     // PLAYER LABEL
     // ==================================================
@@ -850,6 +889,7 @@ class VillageScene extends Phaser.Scene {
     if (
       this.isQuizOpen ||
       this.inventoryOpen ||
+      this.shopOpen ||
       this.npcDialogOpen ||
       this.questCompleteOpen ||
       this.forestGateInfoOpen ||
@@ -909,6 +949,20 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
+    // SHOP CLOSE KEY
+    // ==================================================
+
+    if (
+      this.shopOpen &&
+      Phaser.Input.Keyboard.JustDown(
+        this.shopCloseKey
+      )
+    ) {
+      this.closeShop();
+      return;
+    }
+
+    // ==================================================
     // INVENTORY KEY
     // ==================================================
 
@@ -919,6 +973,7 @@ class VillageScene extends Phaser.Scene {
     ) {
       if (
         !this.isQuizOpen &&
+        !this.shopOpen &&
         !this.npcDialogOpen &&
         !this.questCompleteOpen &&
         !this.forestGateInfoOpen &&
@@ -938,6 +993,7 @@ class VillageScene extends Phaser.Scene {
     if (
       this.isQuizOpen ||
       this.inventoryOpen ||
+      this.shopOpen ||
       this.npcDialogOpen ||
       this.questCompleteOpen ||
       this.isBattleOpen ||
@@ -1045,6 +1101,16 @@ class VillageScene extends Phaser.Scene {
       // jadi bubble lama di atas NPC disembunyikan.
       if (this.grammarMaster.interactionText) {
         this.grammarMaster.interactionText.setVisible(false);
+      }
+    }
+
+    if (this.merchant) {
+      this.merchant.checkDistance(
+        this.player
+      );
+
+      if (this.merchant.interactionText) {
+        this.merchant.interactionText.setVisible(false);
       }
     }
 
@@ -1215,6 +1281,40 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
+    // MERCHANT INTERACTION — STEP 2G.2
+    // ==================================================
+
+    if (
+      this.merchant &&
+      this.merchant.isNearby &&
+      (
+        !nearestChest ||
+        nearestChestDistance >= 80
+      ) &&
+      (
+        !nearestMonster ||
+        !nearestMonster.isNearby
+      ) &&
+      (
+        !this.grammarMaster ||
+        !this.grammarMaster.isNearby
+      )
+    ) {
+      this.showInteractionPrompt(
+        "Buka Tarkeeb Equipment Shop"
+      );
+
+      if (
+        Phaser.Input.Keyboard.JustDown(
+          this.interactKey
+        )
+      ) {
+        this.openShop();
+        return;
+      }
+    }
+
+    // ==================================================
     // FOREST GATE — STEP 2E.3 LOCK / UNLOCK
     // ==================================================
 
@@ -1255,6 +1355,7 @@ class VillageScene extends Phaser.Scene {
       this.isBattleOpen ||
       this.isQuizOpen ||
       this.inventoryOpen ||
+      this.shopOpen ||
       this.npcDialogOpen ||
       this.questCompleteOpen ||
       this.forestGateInfoOpen
@@ -5048,54 +5149,12 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   getPlayerAttack() {
-    let attack =
-      this.playerBaseAttack;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return attack;
-    }
-
-    const weaponId =
-      this.playerData.equipped
-        .Weapon;
-
-    if (!weaponId) {
-      return attack;
-    }
-
-    const weapon =
-      this.playerData.inventory.find(
-        (item) =>
-          item &&
-          item.id ===
-            weaponId
-      );
-
-    if (!weapon) {
-      return attack;
-    }
-
-    const rarity =
-      String(
-        weapon.rarity ||
-          "Common"
-      ).toLowerCase();
-
-    const attackBonus = {
-      common: 5,
-      rare: 10,
-      epic: 15,
-      legendary: 25,
-    };
-
-    attack +=
-      attackBonus[
-        rarity
-      ] || 0;
-
-    return attack;
+    return (
+      this.playerBaseAttack +
+      getEquipmentAttackBonus(
+        this.playerData
+      )
+    );
   }
 
   // ==================================================
@@ -5265,80 +5324,10 @@ class VillageScene extends Phaser.Scene {
   getTotalXPBonus(
     questionType = "isim"
   ) {
-    let totalBonus = 0;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return 0;
-    }
-
-    const slots = [
-      "Weapon",
-      "Armor",
-      "Accessory",
-    ];
-
-    slots.forEach(
-      (slot) => {
-        const equippedId =
-          this.playerData.equipped[
-            slot
-          ];
-
-        if (!equippedId) {
-          return;
-        }
-
-        const item =
-          this.playerData.inventory.find(
-            (inventoryItem) =>
-              inventoryItem &&
-              inventoryItem.id ===
-                equippedId
-          );
-
-        if (!item) {
-          return;
-        }
-
-        const effectType =
-          item.effectType;
-
-        const effectValue =
-          Number(
-            item.effectValue
-          ) || 0;
-
-        if (
-          effectType ===
-            "isimXp" &&
-          questionType ===
-            "isim"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-
-        if (
-          effectType ===
-          "nahwuXp"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-
-        if (
-          effectType ===
-          "allXp"
-        ) {
-          totalBonus +=
-            effectValue;
-        }
-      }
+    return getEquipmentXPBonus(
+      this.playerData,
+      questionType
     );
-
-    return totalBonus;
   }
 
   // ==================================================
@@ -5346,56 +5335,9 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   getTotalDefense() {
-    let totalDefense = 0;
-
-    if (
-      !this.playerData.equipped
-    ) {
-      return 0;
-    }
-
-    const slots = [
-      "Weapon",
-      "Armor",
-      "Accessory",
-    ];
-
-    slots.forEach(
-      (slot) => {
-        const equippedId =
-          this.playerData.equipped[
-            slot
-          ];
-
-        if (!equippedId) {
-          return;
-        }
-
-        const item =
-          this.playerData.inventory.find(
-            (inventoryItem) =>
-              inventoryItem &&
-              inventoryItem.id ===
-                equippedId
-          );
-
-        if (!item) {
-          return;
-        }
-
-        if (
-          item.effectType ===
-          "defense"
-        ) {
-          totalDefense +=
-            Number(
-              item.effectValue
-            ) || 0;
-        }
-      }
+    return getEquipmentDefenseBonus(
+      this.playerData
     );
-
-    return totalDefense;
   }
 
   // ==================================================
@@ -5703,6 +5645,607 @@ class VillageScene extends Phaser.Scene {
         repeat: -1,
       });
     }
+  }
+
+  // ==================================================
+  // MERCHANT PIXEL VISUAL — STEP 2G.2
+  // ==================================================
+
+  applyMerchantPixelVisual(
+    npc,
+    textureKey
+  ) {
+    if (!npc) {
+      return;
+    }
+
+    npc.list.forEach((child) => {
+      if (
+        child &&
+        child.type === "Arc"
+      ) {
+        child.setVisible(false);
+      }
+    });
+
+    const sprite = this.add.image(
+      0,
+      -10,
+      textureKey
+    );
+
+    sprite
+      .setDisplaySize(94, 112)
+      .setTint(0xf0c987);
+
+    npc.addAt(sprite, 0);
+
+    if (npc.nameText) {
+      npc.nameText
+        .setY(54)
+        .setFontSize(12)
+        .setText("Pedagang Tarkeeb")
+        .setStroke("#1A365D", 3);
+    }
+
+    if (npc.interactionText) {
+      npc.interactionText
+        .setY(-80)
+        .setFontSize(13)
+        .setVisible(false);
+    }
+
+    npc.shopMarker = this.add
+      .text(0, -92, "SHOP", {
+        fontSize: "13px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+        backgroundColor: "#7B4B16",
+        padding: {
+          left: 6,
+          right: 6,
+          top: 3,
+          bottom: 3,
+        },
+        stroke: "#07111F",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+
+    npc.add(npc.shopMarker);
+
+    this.tweens.add({
+      targets: npc.shopMarker,
+      y: -97,
+      duration: 750,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  // ==================================================
+  // SHOP UI — STEP 2G.2
+  // ==================================================
+
+  openShop() {
+    if (
+      this.shopOpen ||
+      this.inventoryOpen ||
+      this.isQuizOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen ||
+      this.forestGateInfoOpen ||
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen
+    ) {
+      return;
+    }
+
+    this.shopOpen = true;
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
+
+    if (this.player?.body) {
+      this.player.body.setVelocity(0, 0);
+    }
+
+    this.stopPlayerPixelAnimation();
+
+    this.gameProgress = getGameProgress(this);
+    this.shopTierPage = Math.max(
+      1,
+      Math.min(
+        4,
+        Number(this.gameProgress?.shop?.tier) || 1
+      )
+    );
+
+    this.renderShopUI();
+  }
+
+  renderShopUI() {
+    this.clearShopObjects();
+
+    if (!this.shopOpen) {
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+
+    const unlockedTier = Math.max(
+      1,
+      Math.min(
+        4,
+        Number(this.gameProgress?.shop?.tier) || 1
+      )
+    );
+
+    this.shopTierPage = Phaser.Math.Clamp(
+      Number(this.shopTierPage) || unlockedTier,
+      1,
+      unlockedTier
+    );
+
+    const tierInfo =
+      SHOP_TIER_INFO[this.shopTierPage] ||
+      SHOP_TIER_INFO[1];
+
+    const entries = getShopEntries(unlockedTier)
+      .filter(
+        (entry) =>
+          entry.requiredTier === this.shopTierPage
+      );
+
+    const depth = 3300;
+
+    const addObject = (object) => {
+      if (!object) {
+        return object;
+      }
+
+      object.setScrollFactor?.(0);
+      this.shopObjects.push(object);
+      return object;
+    };
+
+    addObject(
+      this.add
+        .rectangle(400, 300, 800, 600, 0x020817, 0.76)
+        .setDepth(depth)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 300, 716, 506, 0x0b1a2f, 0.99)
+        .setDepth(depth + 1)
+        .setStrokeStyle(3, 0xd4af37, 0.95)
+    );
+
+    addObject(
+      this.add
+        .text(74, 72, "TARKEEB EQUIPMENT SHOP", {
+          fontSize: "25px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          stroke: "#07111F",
+          strokeThickness: 3,
+        })
+        .setDepth(depth + 3)
+    );
+
+    addObject(
+      this.add
+        .text(
+          726,
+          78,
+          `GOLD  ${Number(this.playerData.gold) || 0}`,
+          {
+            fontSize: "15px",
+            color: "#FFE58A",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(1, 0.5)
+        .setDepth(depth + 3)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 111, 650, 2, 0x31577d, 0.9)
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(84, 130, `TIER ${this.shopTierPage} • ${tierInfo.name}`, {
+          fontSize: "16px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 3)
+    );
+
+    addObject(
+      this.add
+        .text(84, 153, tierInfo.description, {
+          fontSize: "11px",
+          color: "#91AAC8",
+        })
+        .setDepth(depth + 3)
+    );
+
+    addObject(
+      this.add
+        .text(
+          716,
+          137,
+          `Tier terbuka: 1–${unlockedTier}`,
+          {
+            fontSize: "11px",
+            color: "#AFC4DE",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(1, 0.5)
+        .setDepth(depth + 3)
+    );
+
+    entries.forEach((entry, index) => {
+      const item = entry.item;
+      const y = 222 + index * 94;
+      const rarityColor = this.getRarityColor(item.rarity);
+      const rarityNumber = parseInt(
+        rarityColor.replace("#", ""),
+        16
+      );
+
+      addObject(
+        this.add
+          .rectangle(400, y, 632, 78, 0x132844, 1)
+          .setDepth(depth + 2)
+          .setStrokeStyle(2, rarityNumber, 0.72)
+      );
+
+      addObject(
+        this.add
+          .text(111, y, item.icon || "🎒", {
+            fontSize: "31px",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+      );
+
+      addObject(
+        this.add
+          .text(145, y - 25, item.name, {
+            fontSize: "14px",
+            color: rarityColor,
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 4)
+      );
+
+      addObject(
+        this.add
+          .text(
+            145,
+            y - 4,
+            `${String(item.rarity).toUpperCase()} • ${item.type}`,
+            {
+              fontSize: "9px",
+              color: "#91AAC8",
+              fontStyle: "bold",
+            }
+          )
+          .setDepth(depth + 4)
+      );
+
+      addObject(
+        this.add
+          .text(145, y + 16, item.description, {
+            fontSize: "10px",
+            color: "#D6E3F4",
+            wordWrap: { width: 315 },
+          })
+          .setDepth(depth + 4)
+      );
+
+      const purchased =
+        isShopItemPurchased(this.gameProgress, entry.itemId) ||
+        this.playerData.inventory.some(
+          (ownedItem) => ownedItem?.id === entry.itemId
+        );
+
+      const affordable =
+        (Number(this.playerData.gold) || 0) >= entry.price;
+
+      addObject(
+        this.add
+          .text(560, y - 9, `${entry.price} GOLD`, {
+            fontSize: "13px",
+            color: purchased
+              ? "#7FA2C5"
+              : affordable
+                ? "#FFE58A"
+                : "#FC8181",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+      );
+
+      let buttonLabel = "BELI";
+      let buttonColor = 0x8b6b13;
+      let buttonStroke = 0xffe58a;
+
+      if (purchased) {
+        buttonLabel = "DIMILIKI";
+        buttonColor = 0x30445f;
+        buttonStroke = 0x5d82ad;
+      } else if (!affordable) {
+        buttonLabel = "GOLD KURANG";
+        buttonColor = 0x6b2f3b;
+        buttonStroke = 0xc45d6f;
+      }
+
+      const buyButton = addObject(
+        this.add
+          .rectangle(650, y + 17, 104, 30, buttonColor, 1)
+          .setDepth(depth + 3)
+          .setStrokeStyle(1, buttonStroke, 0.9)
+          .setInteractive({ useHandCursor: !purchased })
+      );
+
+      const buyText = addObject(
+        this.add
+          .text(650, y + 17, buttonLabel, {
+            fontSize: buttonLabel === "GOLD KURANG" ? "8px" : "10px",
+            color: purchased ? "#AFC4DE" : "#FFFFFF",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+      );
+
+      if (!purchased) {
+        buyButton.on("pointerover", () => {
+          if (affordable) {
+            buyButton.setFillStyle(0xa47c17, 1);
+            buyText.setColor("#FFE58A");
+          } else {
+            buyButton.setFillStyle(0x7f3847, 1);
+          }
+        });
+
+        buyButton.on("pointerout", () => {
+          buyButton.setFillStyle(
+            affordable ? 0x8b6b13 : 0x6b2f3b,
+            1
+          );
+          buyText.setColor("#FFFFFF");
+        });
+
+        buyButton.on("pointerdown", () => {
+          this.purchaseShopItem(entry);
+        });
+      }
+    });
+
+    const previousButton = addObject(
+      this.add
+        .rectangle(112, 505, 96, 32, 0x1a365d, 1)
+        .setDepth(depth + 3)
+        .setStrokeStyle(1, 0x5d82ad, 0.9)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const previousText = addObject(
+      this.add
+        .text(112, 505, "◀ TIER", {
+          fontSize: "10px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    const nextButton = addObject(
+      this.add
+        .rectangle(220, 505, 96, 32, 0x1a365d, 1)
+        .setDepth(depth + 3)
+        .setStrokeStyle(1, 0x5d82ad, 0.9)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const nextText = addObject(
+      this.add
+        .text(220, 505, "TIER ▶", {
+          fontSize: "10px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    const previousEnabled = this.shopTierPage > 1;
+    const nextEnabled = this.shopTierPage < unlockedTier;
+
+    previousButton.setAlpha(previousEnabled ? 1 : 0.35);
+    previousText.setAlpha(previousEnabled ? 1 : 0.35);
+    nextButton.setAlpha(nextEnabled ? 1 : 0.35);
+    nextText.setAlpha(nextEnabled ? 1 : 0.35);
+
+    previousButton.on("pointerdown", () => {
+      if (!previousEnabled) {
+        return;
+      }
+
+      this.shopTierPage -= 1;
+      this.renderShopUI();
+    });
+
+    nextButton.on("pointerdown", () => {
+      if (!nextEnabled) {
+        return;
+      }
+
+      this.shopTierPage += 1;
+      this.renderShopUI();
+    });
+
+    this.shopFeedbackText = addObject(
+      this.add
+        .text(
+          400,
+          505,
+          "Pilih Tier untuk melihat stok yang sudah terbuka.",
+          {
+            fontSize: "10px",
+            color: "#91AAC8",
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    const closeButton = addObject(
+      this.add
+        .rectangle(666, 505, 126, 32, 0x1a365d, 1)
+        .setDepth(depth + 3)
+        .setStrokeStyle(2, 0xd4af37, 0.9)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const closeText = addObject(
+      this.add
+        .text(666, 505, "TUTUP [ ESC ]", {
+          fontSize: "10px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    closeButton.on("pointerover", () => {
+      closeButton.setFillStyle(0x244a73, 1);
+      closeText.setColor("#FFE58A");
+    });
+
+    closeButton.on("pointerout", () => {
+      closeButton.setFillStyle(0x1a365d, 1);
+      closeText.setColor("#FFFFFF");
+    });
+
+    closeButton.on("pointerdown", () => {
+      this.closeShop();
+    });
+  }
+
+  purchaseShopItem(entry) {
+    if (!entry?.item || !entry.itemId) {
+      this.setShopFeedback("Item tidak valid.");
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+
+    const alreadyOwned =
+      isShopItemPurchased(this.gameProgress, entry.itemId) ||
+      this.playerData.inventory.some(
+        (ownedItem) => ownedItem?.id === entry.itemId
+      );
+
+    if (alreadyOwned) {
+      this.setShopFeedback(`${entry.item.name} sudah dimiliki.`);
+      return;
+    }
+
+    const currentGold = Number(this.playerData.gold) || 0;
+
+    if (currentGold < entry.price) {
+      const missingGold = entry.price - currentGold;
+      this.setShopFeedback(
+        `Gold tidak cukup • kurang ${missingGold} Gold.`
+      );
+      return;
+    }
+
+    this.playerData.gold = currentGold - entry.price;
+
+    // Simpan copy object supaya inventory tidak bergantung pada reference catalog.
+    this.playerData.inventory.push({
+      ...entry.item,
+    });
+
+    // Jaga inventory tetap unik berdasarkan item ID.
+    this.playerData.inventory = this.playerData.inventory.filter(
+      (inventoryItem, index, array) =>
+        inventoryItem?.id &&
+        index ===
+          array.findIndex(
+            (otherItem) => otherItem?.id === inventoryItem.id
+          )
+    );
+
+    this.registry.set("playerData", this.playerData);
+
+    this.gameProgress = markShopItemPurchased(
+      this,
+      entry.itemId
+    );
+
+    // Render ulang agar GOLD dan status tombol langsung berubah.
+    this.renderShopUI();
+    this.setShopFeedback(
+      `Berhasil membeli ${entry.item.name} • -${entry.price} Gold.`
+    );
+  }
+
+  setShopFeedback(message) {
+    if (!this.shopFeedbackText?.active) {
+      return;
+    }
+
+    this.shopFeedbackText.setText(message);
+    this.shopFeedbackText.setColor("#FFE58A");
+  }
+
+  clearShopObjects() {
+    if (!Array.isArray(this.shopObjects)) {
+      this.shopObjects = [];
+      return;
+    }
+
+    this.shopObjects.forEach((object) => {
+      if (object?.active) {
+        object.destroy();
+      }
+    });
+
+    this.shopObjects = [];
+    this.shopFeedbackText = null;
+  }
+
+  closeShop() {
+    this.clearShopObjects();
+    this.shopOpen = false;
+
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen ||
+      this.forestGateInfoOpen
+    );
+
+    this.setGameplayHUDVisible(shouldShowHUD);
   }
 
   // ==================================================

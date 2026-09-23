@@ -526,6 +526,35 @@ export function setCurrentArea(
   return saveGameProgress(scene, progress);
 }
 
+// ==================================================
+// SHOP PURCHASE HELPERS — STEP 2G.3
+// ==================================================
+
+export function isShopItemPurchased(progress, itemId) {
+  if (!itemId) {
+    return false;
+  }
+
+  return Boolean(
+    progress?.shop?.purchasedItems?.includes(itemId)
+  );
+}
+
+export function markShopItemPurchased(scene, itemId) {
+  const progress = getGameProgress(scene);
+
+  if (!itemId) {
+    return progress;
+  }
+
+  progress.shop.purchasedItems = normalizeMonsterList([
+    ...(progress.shop.purchasedItems || []),
+    itemId,
+  ]);
+
+  return saveGameProgress(scene, progress);
+}
+
 export function resetGameProgress(scene) {
   const progress = createDefaultGameProgress();
   return saveGameProgress(scene, progress);
