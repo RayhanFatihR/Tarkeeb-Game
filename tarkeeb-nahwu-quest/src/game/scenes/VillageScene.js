@@ -31,6 +31,7 @@ import monsters from "../data/monsters";
 import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
+import { getGameProgress } from "../data/progression";
 
 class VillageScene extends Phaser.Scene {
   constructor() {
@@ -123,6 +124,15 @@ class VillageScene extends Phaser.Scene {
 
   create() {
     this.visualFoundation = new VisualFoundation(this);
+
+    // ==================================================
+    // STEP 2E.1 — GLOBAL PROGRESSION FOUNDATION
+    // ==================================================
+    // Satu state progression dipakai untuk seluruh dunia Tarkeeb:
+    // Nahwu Village -> Forest -> Fi'il Desert -> Castle.
+    // Pada step ini kita baru menyiapkan fondasinya; requirement gate,
+    // redistribusi chest, dan unlock chapter akan dipasang bertahap.
+    this.gameProgress = getGameProgress(this);
 
     // ==================================================
     // PLAYER DATA

@@ -20,6 +20,7 @@ import monsters from "../data/monsters";
 import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
+import { getGameProgress } from "../data/progression";
 
 class ForestScene extends Phaser.Scene {
   constructor() {
@@ -90,6 +91,13 @@ class ForestScene extends Phaser.Scene {
   create() {
     this.visualFoundation =
       new VisualFoundation(this);
+
+    // ==================================================
+    // STEP 2E.1 — GLOBAL PROGRESSION FOUNDATION
+    // ==================================================
+    // Forest memakai state progression yang sama dengan Village, Desert,
+    // dan Castle. Ini mencegah logic unlock tiap map dibuat terpisah.
+    this.gameProgress = getGameProgress(this);
 
     let savedData = this.registry.get("playerData");
 
