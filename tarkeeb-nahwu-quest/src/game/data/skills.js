@@ -3,9 +3,10 @@ const skills = {
     id: "powerStrike",
     name: "Power Strike",
     icon: "✨",
-    description: "Serangan kuat yang membutuhkan Combo x2.",
+    description: "Serangan kuat yang membutuhkan Combo x2 dan selalu lebih kuat dari serangan normal non-critical.",
     requiredCombo: 2,
-    damageMultiplier: 1.75,
+    bonusDamage: 30,
+    damageMultiplier: 1.5,
     cooldown: 0,
   },
 

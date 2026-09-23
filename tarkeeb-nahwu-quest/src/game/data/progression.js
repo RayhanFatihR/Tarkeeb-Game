@@ -1,6 +1,6 @@
 // ============================================================
 // TARKEEB — GLOBAL PROGRESSION FOUNDATION
-// Step 2E.3
+// Step 2G.1
 //
 // Satu sumber state untuk progression seluruh dunia:
 // 1. Nahwu Village
@@ -35,7 +35,11 @@ export const AREA_CONFIG = Object.freeze({
     chapter: 2,
     name: "Forest of Isim",
     nextArea: "fiilDesert",
-    requiredMonsterIds: [],
+    requiredMonsterIds: [
+      "nahwuSlime",
+      "grammarGoblin",
+      "irabGolem",
+    ],
   },
 
   fiilDesert: {
@@ -63,7 +67,7 @@ const createAreaState = (unlocked = false) => ({
 
 export function createDefaultGameProgress() {
   return {
-    version: 2,
+    version: 4,
     currentArea: AREA_KEYS.VILLAGE,
 
     nahwuVillage: createAreaState(true),
@@ -75,11 +79,13 @@ export function createDefaultGameProgress() {
       bossDefeated: false,
     },
 
-    // Shop akan diperluas pada Step 2G.
-    // Tier meningkat seiring chapter yang berhasil diselesaikan.
+    // Shop tier meningkat seiring chapter yang berhasil diselesaikan.
+    // purchasedItems menyimpan histori pembelian runtime agar item
+    // tidak dapat dibeli berulang kali.
     shop: {
       unlocked: true,
       tier: 1,
+      purchasedItems: [],
     },
   };
 }
@@ -132,7 +138,7 @@ export function normalizeGameProgress(rawProgress) {
       : {};
 
   const progress = {
-    version: 2,
+    version: 4,
 
     currentArea:
       AREA_CONFIG[source.currentArea]
@@ -168,8 +174,15 @@ export function normalizeGameProgress(rawProgress) {
         source.shop?.unlocked !== false,
       tier: Math.max(
         1,
-        Number(source.shop?.tier) || 1
+        Math.min(
+          4,
+          Number(source.shop?.tier) || 1
+        )
       ),
+      purchasedItems:
+        normalizeMonsterList(
+          source.shop?.purchasedItems
+        ),
     },
   };
 
@@ -177,7 +190,7 @@ export function normalizeGameProgress(rawProgress) {
   progress.nahwuVillage.unlocked = true;
 
   // ==================================================
-  // STEP 2E.3 — PROGRESSION MIGRATION / AUTO-HEAL
+  // STEP 2F.1 — PROGRESSION MIGRATION / AUTO-HEAL
   // ==================================================
   // Jika save/runtime lama sudah memenuhi requirement chapter tetapi
   // flag completed/unlocked belum sempat tersimpan, perbaiki otomatis.
@@ -196,6 +209,21 @@ export function normalizeGameProgress(rawProgress) {
     progress.nahwuVillage.completed = true;
     progress.forest.unlocked = true;
     progress.shop.tier = Math.max(progress.shop.tier, 2);
+  }
+
+  const forestMonstersDone =
+    AREA_CONFIG.forest.requiredMonsterIds.every(
+      (monsterId) =>
+        progress.forest.defeatedMonsters.includes(monsterId)
+    );
+
+  if (
+    progress.forest.questCompleted &&
+    forestMonstersDone
+  ) {
+    progress.forest.completed = true;
+    progress.fiilDesert.unlocked = true;
+    progress.shop.tier = Math.max(progress.shop.tier, 3);
   }
 
   if (progress.forest.completed) {

@@ -25,8 +25,12 @@ import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
 import {
+  AREA_CONFIG,
   getGameProgress,
   markChestOpened,
+  markMonsterDefeated,
+  markQuestCompleted,
+  completeAreaAndUnlockNext,
   setCurrentArea,
 } from "../data/progression";
 
@@ -111,7 +115,7 @@ class ForestScene extends Phaser.Scene {
       new VisualFoundation(this);
 
     // ==================================================
-    // STEP 2E.2 — FOREST CHESTS + GLOBAL PROGRESSION
+    // STEP 2F.1 — FOREST CHAPTER + GLOBAL PROGRESSION
     // ==================================================
     // Forest memakai state progression yang sama dengan Village, Desert,
     // dan Castle. Ini mencegah logic unlock tiap map dibuat terpisah.
@@ -214,6 +218,11 @@ class ForestScene extends Phaser.Scene {
     this.forestQuestCompleteOpen = false;
     this.forestQuestCompleteObjects = [];
     this.pendingForestQuestCompletion = null;
+    this.forestChapterJustCompleted = false;
+
+    // Sinkronkan quest lama dengan progression global. Ini membuat
+    // monster yang sudah dikalahkan sebelum menerima quest tetap dihitung.
+    this.syncForestQuestWithGlobalProgress();
 
     // Inventory tersedia lintas map.
     this.inventoryOpen = false;
@@ -247,6 +256,7 @@ class ForestScene extends Phaser.Scene {
     this.createWorld();
     this.createPlayer();
     this.createVillageGate();
+    this.createFiilDesertGate();
 
     // Keep player movement active and collide with forest obstacles.
     this.physics.add.collider(
@@ -317,7 +327,7 @@ class ForestScene extends Phaser.Scene {
       .setTileScale(0.62, 0.62);
 
     this.add
-      .text(400, 78, "FOREST OF ISIM", {
+      .text(400, 158, "FOREST OF ISIM", {
         fontSize: "30px",
         color: "#ffffff",
         fontStyle: "bold",
@@ -326,7 +336,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(20);
 
     this.add
-      .text(400, 112, "Hutan tempat para penjaga Isim berlatih.", {
+      .text(400, 190, "Hutan tempat para penjaga Isim berlatih.", {
         fontSize: "15px",
         color: "#e2e8f0",
         fontStyle: "italic",
@@ -397,28 +407,42 @@ class ForestScene extends Phaser.Scene {
 
     this.monsters = [];
 
-    const slime = new Monster(
-      this,
-      205,
-      245,
-      monsters.nahwuSlime
+    const defeatedForestMonsters = new Set(
+      this.gameProgress?.forest?.defeatedMonsters || []
     );
 
-    const goblin = new Monster(
-      this,
-      595,
-      245,
-      monsters.grammarGoblin
-    );
+    if (!defeatedForestMonsters.has("nahwuSlime")) {
+      this.monsters.push(
+        new Monster(
+          this,
+          205,
+          245,
+          monsters.nahwuSlime
+        )
+      );
+    }
 
-    const golem = new Monster(
-      this,
-      650,
-      455,
-      monsters.irabGolem
-    );
+    if (!defeatedForestMonsters.has("grammarGoblin")) {
+      this.monsters.push(
+        new Monster(
+          this,
+          595,
+          245,
+          monsters.grammarGoblin
+        )
+      );
+    }
 
-    this.monsters.push(slime, goblin, golem);
+    if (!defeatedForestMonsters.has("irabGolem")) {
+      this.monsters.push(
+        new Monster(
+          this,
+          650,
+          455,
+          monsters.irabGolem
+        )
+      );
+    }
 
     // ==================================================
     // MONSTER VISUAL ANIMATION
@@ -861,14 +885,16 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   acceptForestQuest() {
+    const defeatedCount = this.getForestDefeatedMonsterCount();
+
     this.forestQuest = {
       id: "forest_isim_clear",
       title: "Bersihkan Forest of Isim",
       description:
-        "Kalahkan 2 monster di Forest of Isim.",
+        "Kalahkan semua 3 monster di Forest of Isim.",
       type: "forestMonster",
-      progress: 0,
-      requiredProgress: 2,
+      progress: defeatedCount,
+      requiredProgress: 3,
       reward: {
         xp: 100,
         gold: 50,
@@ -882,6 +908,14 @@ class ForestScene extends Phaser.Scene {
     );
 
     this.closeForestQuestDialog();
+
+    // Jika player sudah mengalahkan monster sebelum mengambil quest,
+    // progress lama langsung dihitung dan quest dapat selesai tanpa respawn.
+    if (defeatedCount >= 3) {
+      this.completeForestQuest();
+      return;
+    }
+
     this.showForestQuestHUD();
   }
 
@@ -919,7 +953,10 @@ class ForestScene extends Phaser.Scene {
   showForestQuestHUD() {
     this.clearForestQuestHUD();
 
-    if (!this.forestQuest) {
+    // Setelah quest Forest selesai, panel quest kanan-atas tidak perlu
+    // ditampilkan lagi. Chapter II sudah selesai dan player bisa fokus
+    // ke gate Fi'il Desert / eksplorasi berikutnya.
+    if (!this.forestQuest || this.forestQuest.completed) {
       return;
     }
 
@@ -938,14 +975,21 @@ class ForestScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setStrokeStyle(2, 0xd4af37, 0.75);
 
+    const questFinished = Boolean(this.forestQuest.completed);
+
     const label = this.add
-      .text(x + 14, y + 10, "ACTIVE QUEST", {
-        fontSize: "12px",
-        color: "#FFE58A",
-        fontStyle: "bold",
-        stroke: "#07111F",
-        strokeThickness: 2,
-      })
+      .text(
+        x + 14,
+        y + 10,
+        questFinished ? "QUEST COMPLETE" : "ACTIVE QUEST",
+        {
+          fontSize: "12px",
+          color: questFinished ? "#8FF0A4" : "#FFE58A",
+          fontStyle: "bold",
+          stroke: "#07111F",
+          strokeThickness: 2,
+        }
+      )
       .setDepth(hudDepth + 1)
       .setScrollFactor(0);
 
@@ -966,11 +1010,18 @@ class ForestScene extends Phaser.Scene {
     const ratio = Phaser.Math.Clamp(current / required, 0, 1);
 
     const progress = this.add
-      .text(x + 14, y + 72, `Monster  ${current} / ${required}`, {
-        fontSize: "12px",
-        color: "#DCEBFF",
-        fontStyle: "bold",
-      })
+      .text(
+        x + 14,
+        y + 72,
+        questFinished
+          ? `Semua monster dikalahkan  ${current} / ${required}`
+          : `Monster  ${current} / ${required}`,
+        {
+          fontSize: "12px",
+          color: questFinished ? "#B7F7C4" : "#DCEBFF",
+          fontStyle: "bold",
+        }
+      )
       .setDepth(hudDepth + 1)
       .setScrollFactor(0);
 
@@ -1028,73 +1079,143 @@ class ForestScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // UPDATE FOREST QUEST
+  // FOREST GLOBAL PROGRESSION — STEP 2F.1
   // ==================================================
 
-  updateForestQuestProgress() {
-    if (
-      !this.forestQuest ||
-      this.forestQuest.completed
-    ) {
+  getForestDefeatedMonsterCount() {
+    const progress = getGameProgress(this);
+    const requiredIds =
+      AREA_CONFIG.forest.requiredMonsterIds || [];
+
+    return requiredIds.filter((monsterId) =>
+      progress.forest.defeatedMonsters.includes(monsterId)
+    ).length;
+  }
+
+  syncForestQuestWithGlobalProgress() {
+    this.gameProgress = getGameProgress(this);
+
+    if (!this.forestQuest) {
       return;
     }
 
+    const defeatedCount = this.getForestDefeatedMonsterCount();
+
+    this.forestQuest.requiredProgress = 3;
+    this.forestQuest.progress = Math.min(3, defeatedCount);
+
+    // Global state adalah sumber kebenaran. Save/runtime lama yang
+    // sudah complete juga tetap terbaca dengan benar.
+    if (this.gameProgress.forest.questCompleted === true) {
+      this.forestQuest.completed = true;
+    }
+
+    this.registry.set("forestQuest", this.forestQuest);
+  }
+
+  updateForestQuestProgress(monsterId) {
+    if (monsterId) {
+      this.gameProgress = markMonsterDefeated(
+        this,
+        "forest",
+        monsterId
+      );
+    }
+
+    if (!this.forestQuest || this.forestQuest.completed) {
+      return;
+    }
+
+    const defeatedCount = this.getForestDefeatedMonsterCount();
+
     this.forestQuest.progress = Math.min(
-      this.forestQuest.progress + 1,
+      defeatedCount,
       this.forestQuest.requiredProgress
     );
+
+    this.registry.set("forestQuest", this.forestQuest);
 
     if (
       this.forestQuest.progress >=
       this.forestQuest.requiredProgress
     ) {
-      this.forestQuest.completed = true;
+      this.completeForestQuest();
+      return;
+    }
 
-      const xpResult = this.addXP(
-        Number(this.forestQuest.reward.xp) || 0,
-        "isim"
-      );
+    this.showForestQuestHUD();
+  }
 
-      const goldReward =
-        Number(this.forestQuest.reward.gold) || 0;
+  completeForestQuest() {
+    if (!this.forestQuest || this.forestQuest.completed) {
+      return;
+    }
 
-      this.playerData.gold =
-        Number(this.playerData.gold) + goldReward;
+    this.forestQuest.completed = true;
+    this.forestQuest.progress = this.forestQuest.requiredProgress;
 
-      this.registry.set(
-        "playerData",
-        this.playerData
-      );
+    // Tandai quest Chapter II selesai lalu gunakan helper global
+    // untuk menyelesaikan Forest dan membuka Fi'il Desert.
+    this.gameProgress = markQuestCompleted(
+      this,
+      "forest",
+      true
+    );
 
-      this.updateHUD();
+    this.gameProgress = completeAreaAndUnlockNext(
+      this,
+      "forest"
+    );
 
-      let rewardText =
-        `+${xpResult.finalXP} XP\n` +
-        `+${goldReward} GOLD`;
+    this.forestChapterJustCompleted = true;
 
-      if (xpResult.bonusXP > 0) {
-        rewardText +=
-          `\nEquipment Bonus: +${xpResult.bonusXP} XP`;
-      }
+    const xpResult = this.addXP(
+      Number(this.forestQuest.reward.xp) || 0,
+      "isim"
+    );
 
-      if (xpResult.leveledUp) {
-        rewardText += "\nLEVEL UP!";
-      }
+    const goldReward =
+      Number(this.forestQuest.reward.gold) || 0;
 
-      // Battle result harus selesai dulu. Setelah player menekan LANJUT,
-      // reward quest Forest baru ditampilkan agar modal tidak menumpuk.
+    this.playerData.gold =
+      Number(this.playerData.gold) + goldReward;
+
+    this.registry.set("playerData", this.playerData);
+    this.registry.set("forestQuest", this.forestQuest);
+
+    this.updateHUD();
+
+    let rewardText =
+      `+${xpResult.finalXP} XP\n` +
+      `+${goldReward} GOLD`;
+
+    if (xpResult.bonusXP > 0) {
+      rewardText +=
+        `\nEquipment Bonus: +${xpResult.bonusXP} XP`;
+    }
+
+    if (xpResult.leveledUp) {
+      rewardText += "\nLEVEL UP!";
+    }
+
+
+    // Jika penyelesaian terjadi setelah battle terakhir, modal ini
+    // ditampilkan setelah result battle ditutup agar UI tidak menumpuk.
+    if (this.isBattleOpen) {
       this.pendingForestQuestCompletion = {
         title: this.forestQuest.title,
         rewardText,
       };
+    } else {
+      this.showForestQuestComplete(
+        this.forestQuest.title,
+        rewardText
+      );
     }
 
-    this.registry.set(
-      "forestQuest",
-      this.forestQuest
-    );
-
-    this.showForestQuestHUD();
+    // Jangan munculkan lagi Quest HUD setelah Chapter II selesai.
+    // showForestQuestHUD() kini otomatis skip quest yang completed.
+    this.clearForestQuestHUD();
   }
 
   // ==================================================
@@ -1111,23 +1232,24 @@ class ForestScene extends Phaser.Scene {
       .rectangle(400, 300, 800, 600, 0x04100a, 0.84)
       .setDepth(760);
 
+    // Panel dibuat lebih tinggi agar reward multi-baris tidak saling bertabrakan.
     const panel = this.add
-      .rectangle(400, 305, 590, 370, 0x10233f, 0.99)
+      .rectangle(400, 305, 590, 410, 0x10233f, 0.99)
       .setDepth(761)
       .setStrokeStyle(3, 0x70a36b, 1);
 
     const topGlow = this.add
-      .rectangle(400, 123, 590, 5, 0x9fd29b, 1)
+      .rectangle(400, 103, 590, 5, 0x9fd29b, 1)
       .setDepth(762);
 
     const seal = this.add
-      .circle(400, 170, 36, 0x70a36b, 1)
+      .circle(400, 154, 34, 0x70a36b, 1)
       .setDepth(762)
       .setStrokeStyle(3, 0xb9e6b5, 1);
 
     const check = this.add
-      .text(400, 170, "✓", {
-        fontSize: "34px",
+      .text(400, 154, "✓", {
+        fontSize: "32px",
         color: "#07111F",
         fontStyle: "bold",
       })
@@ -1135,7 +1257,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(763);
 
     const eyebrow = this.add
-      .text(400, 218, "FOREST QUEST CLEARED", {
+      .text(400, 198, "CHAPTER II COMPLETE", {
         fontSize: "12px",
         color: "#9FD29B",
         fontStyle: "bold",
@@ -1144,8 +1266,8 @@ class ForestScene extends Phaser.Scene {
       .setDepth(763);
 
     const title = this.add
-      .text(400, 247, "HUTAN BERHASIL DIBERSIHKAN!", {
-        fontSize: "24px",
+      .text(400, 226, "FI'IL DESERT TERBUKA!", {
+        fontSize: "23px",
         color: "#E8FFE6",
         fontStyle: "bold",
         stroke: "#07111F",
@@ -1155,13 +1277,13 @@ class ForestScene extends Phaser.Scene {
       .setDepth(763);
 
     const questCard = this.add
-      .rectangle(400, 295, 470, 48, 0x0a172a, 0.96)
+      .rectangle(400, 274, 470, 46, 0x0a172a, 0.96)
       .setDepth(762)
       .setStrokeStyle(1, 0x4f7f58, 0.95);
 
     const quest = this.add
-      .text(400, 295, titleText, {
-        fontSize: "17px",
+      .text(400, 274, titleText, {
+        fontSize: "16px",
         color: "#CFE8D0",
         fontStyle: "bold",
         align: "center",
@@ -1171,7 +1293,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(763);
 
     const rewardLabel = this.add
-      .text(400, 340, "REWARDS", {
+      .text(400, 314, "REWARDS", {
         fontSize: "12px",
         color: "#9FD29B",
         fontStyle: "bold",
@@ -1180,30 +1302,45 @@ class ForestScene extends Phaser.Scene {
       .setDepth(763);
 
     const rewardCard = this.add
-      .rectangle(400, 389, 470, 72, 0x142b4a, 0.96)
+      .rectangle(400, 371, 470, 102, 0x142b4a, 0.96)
       .setDepth(762)
       .setStrokeStyle(1, 0x70a36b, 0.9);
 
     const reward = this.add
-      .text(400, 389, rewardText, {
-        fontSize: "15px",
+      .text(400, 371, rewardText, {
+        fontSize: "14px",
         color: "#F3F7FF",
         fontStyle: "bold",
         align: "center",
-        lineSpacing: 5,
+        lineSpacing: 6,
         wordWrap: { width: 430 },
       })
       .setOrigin(0.5)
       .setDepth(763);
 
+    // Unlock dipisahkan dari daftar reward agar tidak terlihat seperti reward item.
+    const unlockBadge = this.add
+      .rectangle(400, 441, 330, 30, 0x0a172a, 0.96)
+      .setDepth(762)
+      .setStrokeStyle(1, 0x9fd29b, 0.9);
+
+    const unlockText = this.add
+      .text(400, 441, "AREA BERIKUTNYA  •  FI'IL DESERT", {
+        fontSize: "12px",
+        color: "#B9E6B5",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
     const button = this.add
-      .rectangle(400, 462, 240, 48, 0x70a36b, 1)
+      .rectangle(400, 481, 240, 46, 0x70a36b, 1)
       .setDepth(762)
       .setStrokeStyle(2, 0xb9e6b5, 1)
       .setInteractive({ useHandCursor: true });
 
     const buttonText = this.add
-      .text(400, 462, "KEMBALI KE HUTAN", {
+      .text(400, 481, "LANJUTKAN", {
         fontSize: "14px",
         color: "#07111F",
         fontStyle: "bold",
@@ -1214,7 +1351,7 @@ class ForestScene extends Phaser.Scene {
     this.forestQuestCompleteObjects.push(
       overlay, panel, topGlow, seal, check, eyebrow, title,
       questCard, quest, rewardLabel, rewardCard, reward,
-      button, buttonText
+      unlockBadge, unlockText, button, buttonText
     );
 
     panel.setScale(0.96);
@@ -1250,8 +1387,122 @@ class ForestScene extends Phaser.Scene {
       this.forestQuestCompleteOpen = false;
 
       this.updateHUD();
-      this.showForestQuestHUD();
+      this.clearForestQuestHUD();
       this.setGameplayHUDVisible(true);
+    });
+  }
+
+  // ==================================================
+  // CREATE FI'IL DESERT GATE — STEP 2F.2
+  // ==================================================
+
+  createFiilDesertGate() {
+    this.desertGate = this.add.image(
+      400,
+      66,
+      "forestGatePixel"
+    );
+
+    this.desertGate
+      .setDisplaySize(108, 136)
+      .setDepth(12)
+      .setTint(0xd8b36a);
+
+    this.desertGateLabel = this.add
+      .text(400, 126, "", {
+        fontSize: "12px",
+        color: "#ffffff",
+        backgroundColor: "#1A365D",
+        padding: 5,
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
+
+    this.desertGatePrompt = this.add
+      .text(400, 132, "", {
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "#1A365D",
+        padding: 7,
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(20)
+      .setVisible(false);
+
+    this.desertGateReady = false;
+
+    this.time.delayedCall(500, () => {
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      this.desertGateReady = true;
+    });
+
+    this.updateFiilDesertGateVisual();
+  }
+
+  updateFiilDesertGateVisual() {
+    if (!this.desertGate || !this.desertGateLabel) {
+      return;
+    }
+
+    const unlocked =
+      this.gameProgress?.fiilDesert?.unlocked === true;
+
+    if (unlocked) {
+      this.desertGate
+        .clearTint()
+        .setTint(0xe8c77a)
+        .setAlpha(1);
+
+      this.desertGateLabel.setText(
+        "FI'IL DESERT  •  OPEN"
+      );
+      this.desertGateLabel.setColor("#FFF3C4");
+    } else {
+      this.desertGate
+        .setTint(0x6f6758)
+        .setAlpha(0.72);
+
+      this.desertGateLabel.setText(
+        "FI'IL DESERT  •  LOCKED"
+      );
+      this.desertGateLabel.setColor("#D4D4D4");
+    }
+  }
+
+  enterFiilDesert() {
+    if (this.isTransitioning) {
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+
+    if (this.gameProgress?.fiilDesert?.unlocked !== true) {
+      this.showInteractionPrompt(
+        "Selesaikan Chapter II untuk membuka Fi'il Desert"
+      );
+      return;
+    }
+
+    this.isTransitioning = true;
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
+
+    if (this.player?.body) {
+      this.player.body.setVelocity(0, 0);
+    }
+
+    this.visualFoundation.playSceneTransition({
+      title: "FI'IL DESERT",
+      subtitle: "Chapter III • Negeri Para Penjaga Fi'il",
+      onComplete: () => {
+        setCurrentArea(this, "fiilDesert");
+        this.scene.start("FiilDesertScene");
+      },
     });
   }
 
@@ -1395,6 +1646,8 @@ class ForestScene extends Phaser.Scene {
 
     this.hideInteractionPrompt();
     this.villageGatePrompt.setVisible(false);
+    this.desertGatePrompt?.setVisible(false);
+    this.updateFiilDesertGateVisual();
 
     // Arm the return gate only after the E key has been released.
     // This prevents the E press used to enter ForestScene from
@@ -1504,6 +1757,43 @@ class ForestScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
         this.startBattle(nearestMonster);
         return;
+      }
+    }
+
+    // ==================================================
+    // FI'IL DESERT GATE INTERACTION
+    // ==================================================
+
+    if (this.desertGate) {
+      const desertGateDistance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.desertGate.x,
+        this.desertGate.y
+      );
+
+      if (desertGateDistance < 92) {
+        const desertUnlocked =
+          this.gameProgress?.fiilDesert?.unlocked === true;
+
+        this.showInteractionPrompt(
+          desertUnlocked
+            ? "Masuk Fi'il Desert"
+            : "Fi'il Desert terkunci • Selesaikan Chapter II"
+        );
+
+        if (
+          this.desertGateReady &&
+          Phaser.Input.Keyboard.JustDown(this.interactKey)
+        ) {
+          if (desertUnlocked) {
+            this.enterFiilDesert();
+            return;
+          }
+
+          // Tetap di Forest; prompt sudah menjelaskan requirement.
+          return;
+        }
       }
     }
 
@@ -4539,11 +4829,16 @@ class ForestScene extends Phaser.Scene {
     defendButton,
     updateBattleUI
   ) {
+    // Power Strike harus terasa lebih kuat daripada serangan normal.
+    // Sebelumnya skill hanya menghitung ATK - DEF, sementara serangan
+    // normal juga mendapat bonus damage dari soal (20/30/45).
+    // Akibatnya skill justru bisa lebih lemah.
     const baseDamage =
       Math.max(
         1,
         this.getPlayerAttack() -
-          this.currentMonster.defense
+          this.currentMonster.defense +
+          (skills.powerStrike.bonusDamage || 30)
       );
 
     const damage =
@@ -4994,7 +5289,9 @@ class ForestScene extends Phaser.Scene {
         // FOREST QUEST PROGRESS
         // ==================================================
 
-        this.updateForestQuestProgress();
+        this.updateForestQuestProgress(
+          monster.id
+        );
 
         // ==================================================
         // VICTORY SCREEN

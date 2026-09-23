@@ -281,6 +281,10 @@ class VillageScene extends Phaser.Scene {
     this.questCompleteOpen =
       false;
 
+    // Step 2E.4 — modal feedback ketika Forest masih terkunci.
+    this.forestGateInfoOpen = false;
+    this.forestGateInfoObjects = [];
+
     this.isTransitioning =
       false;
 
@@ -706,6 +710,14 @@ class VillageScene extends Phaser.Scene {
     // ==================================================
 
     this.forestEntryHandler = (event) => {
+      // E juga berfungsi untuk menutup panel requirement gate.
+      if (this.forestGateInfoOpen) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.closeForestGateRequirements();
+        return;
+      }
+
       if (
         this.isBattleOpen ||
         this.isQuizOpen ||
@@ -840,6 +852,7 @@ class VillageScene extends Phaser.Scene {
       this.inventoryOpen ||
       this.npcDialogOpen ||
       this.questCompleteOpen ||
+      this.forestGateInfoOpen ||
       this.isBattleOpen ||
       this.isBattleQuestionOpen
     ) {
@@ -908,6 +921,7 @@ class VillageScene extends Phaser.Scene {
         !this.isQuizOpen &&
         !this.npcDialogOpen &&
         !this.questCompleteOpen &&
+        !this.forestGateInfoOpen &&
         !this.isBattleOpen &&
         !this.isBattleQuestionOpen
       ) {
@@ -1242,7 +1256,8 @@ class VillageScene extends Phaser.Scene {
       this.isQuizOpen ||
       this.inventoryOpen ||
       this.npcDialogOpen ||
-      this.questCompleteOpen
+      this.questCompleteOpen ||
+      this.forestGateInfoOpen
     ) {
       return;
     }
@@ -1252,9 +1267,8 @@ class VillageScene extends Phaser.Scene {
       this.refreshForestGateState();
 
     if (!gateStatus.unlocked) {
-      this.showInteractionPrompt(
-        gateStatus.prompt
-      );
+      this.hideInteractionPrompt();
+      this.showForestGateRequirements();
 
       // Feedback kecil ketika mencoba membuka gate yang masih terkunci.
       this.tweens.killTweensOf(
@@ -1295,6 +1309,7 @@ class VillageScene extends Phaser.Scene {
     );
 
     this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
 
     this.visualFoundation.playSceneTransition({
       title: "FOREST OF ISIM",
@@ -1306,6 +1321,247 @@ class VillageScene extends Phaser.Scene {
         );
       },
     });
+  }
+
+  // ==================================================
+  // FOREST GATE REQUIREMENT PANEL — STEP 2E.4
+  // ==================================================
+
+  showForestGateRequirements() {
+    if (this.forestGateInfoOpen) {
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+
+    const status = getAreaRequirementStatus(
+      this,
+      "nahwuVillage"
+    );
+
+    if (status.nextAreaUnlocked) {
+      return;
+    }
+
+    this.forestGateInfoOpen = true;
+    this.forestGateInfoObjects = [];
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
+
+    if (this.player?.body) {
+      this.player.body.setVelocity(0, 0);
+    }
+
+    this.stopPlayerPixelAnimation();
+
+    const depth = 3200;
+
+    const overlay = this.add
+      .rectangle(400, 300, 800, 600, 0x06101b, 0.74)
+      .setDepth(depth)
+      .setScrollFactor(0)
+      .setInteractive();
+
+    const panel = this.add
+      .rectangle(400, 300, 520, 392, 0x10233f, 0.99)
+      .setDepth(depth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(3, 0xd4af37, 0.95);
+
+    const accent = this.add
+      .rectangle(400, 111, 516, 8, 0xd4af37, 1)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const chapter = this.add
+      .text(400, 132, "CHAPTER I • NAHWU VILLAGE", {
+        fontSize: "13px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const title = this.add
+      .text(400, 164, "FOREST OF ISIM MASIH TERKUNCI", {
+        fontSize: "23px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const subtitle = this.add
+      .text(400, 195, "Selesaikan ujian Chapter I untuk membuka Chapter II.", {
+        fontSize: "13px",
+        color: "#C9D8EC",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const divider = this.add
+      .rectangle(400, 220, 450, 2, 0x456381, 0.8)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const defeated = new Set(
+      this.gameProgress?.nahwuVillage?.defeatedMonsters || []
+    );
+
+    const requirements = [
+      {
+        label: "Quest Grammar Master",
+        done: status.questCompleted,
+        detail: status.questCompleted ? "Selesai" : "Belum selesai",
+      },
+      {
+        label: "Nahwu Slime",
+        done: defeated.has("nahwuSlime"),
+        detail: defeated.has("nahwuSlime") ? "Dikalahkan" : "Belum dikalahkan",
+      },
+      {
+        label: "Grammar Goblin",
+        done: defeated.has("grammarGoblin"),
+        detail: defeated.has("grammarGoblin") ? "Dikalahkan" : "Belum dikalahkan",
+      },
+      {
+        label: "I'rab Golem",
+        done: defeated.has("irabGolem"),
+        detail: defeated.has("irabGolem") ? "Dikalahkan" : "Belum dikalahkan",
+      },
+    ];
+
+    const rows = requirements.map((requirement, index) => {
+      const y = 252 + index * 42;
+      const markColor = requirement.done ? "#8EF0AD" : "#FF9B9B";
+      const mark = requirement.done ? "✓" : "○";
+
+      const markText = this.add
+        .text(198, y, mark, {
+          fontSize: "20px",
+          color: markColor,
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 2)
+        .setScrollFactor(0);
+
+      const label = this.add
+        .text(222, y - 9, requirement.label, {
+          fontSize: "14px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 2)
+        .setScrollFactor(0);
+
+      const detail = this.add
+        .text(222, y + 10, requirement.detail, {
+          fontSize: "11px",
+          color: requirement.done ? "#AEEFC1" : "#AFC1D8",
+        })
+        .setDepth(depth + 2)
+        .setScrollFactor(0);
+
+      return [markText, label, detail];
+    });
+
+    const progressText = this.add
+      .text(400, 421, `Monster ${status.defeatedCount}/${status.requiredCount} dikalahkan`, {
+        fontSize: "12px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const closeButton = this.add
+      .rectangle(400, 458, 170, 42, 0xd4af37, 1)
+      .setDepth(depth + 2)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xffe58a, 0.8)
+      .setInteractive({ useHandCursor: true });
+
+    const closeText = this.add
+      .text(400, 458, "TUTUP  [ E ]", {
+        fontSize: "13px",
+        color: "#10233F",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
+
+    closeButton.on("pointerover", () => {
+      closeButton.setFillStyle(0xf0c94b);
+    });
+
+    closeButton.on("pointerout", () => {
+      closeButton.setFillStyle(0xd4af37);
+    });
+
+    closeButton.on("pointerdown", () => {
+      this.closeForestGateRequirements();
+    });
+
+    panel.setScale(0.96);
+    panel.setAlpha(0);
+
+    this.tweens.add({
+      targets: panel,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 170,
+      ease: "Back.easeOut",
+    });
+
+    this.forestGateInfoObjects.push(
+      overlay,
+      panel,
+      accent,
+      chapter,
+      title,
+      subtitle,
+      divider,
+      ...rows.flat(),
+      progressText,
+      closeButton,
+      closeText
+    );
+  }
+
+  closeForestGateRequirements() {
+    if (!this.forestGateInfoOpen) {
+      return;
+    }
+
+    this.forestGateInfoObjects.forEach((object) => {
+      if (object?.active) {
+        object.destroy();
+      }
+    });
+
+    this.forestGateInfoObjects = [];
+    this.forestGateInfoOpen = false;
+
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen ||
+      this.isTransitioning
+    );
+
+    this.setGameplayHUDVisible(shouldShowHUD);
   }
 
   // ==================================================
@@ -1409,7 +1665,7 @@ class VillageScene extends Phaser.Scene {
     if (forestUnlocked) {
       return {
         unlocked: true,
-        title: "🌳 FOREST",
+        title: "🌳 FOREST • OPEN",
         prompt: "Masuk Forest of Isim",
       };
     }
@@ -1422,7 +1678,7 @@ class VillageScene extends Phaser.Scene {
     ) {
       return {
         unlocked: false,
-        title: "🔒 FOREST",
+        title: "🔒 FOREST • LOCKED",
         prompt: "Forest terkunci • Ambil quest Grammar Master",
       };
     }
@@ -1431,7 +1687,7 @@ class VillageScene extends Phaser.Scene {
     if (!status.monstersCompleted) {
       return {
         unlocked: false,
-        title: "🔒 FOREST",
+        title: `🔒 FOREST • ${status.defeatedCount}/${status.requiredCount}`,
         prompt:
           `Forest terkunci • Monster ${status.defeatedCount}/${status.requiredCount}`,
       };
@@ -1441,14 +1697,14 @@ class VillageScene extends Phaser.Scene {
     if (!status.questCompleted) {
       return {
         unlocked: false,
-        title: "🔒 FOREST",
+        title: `🔒 FOREST • ${status.defeatedCount}/${status.requiredCount}`,
         prompt: "Forest terkunci • Selesaikan quest Grammar Master",
       };
     }
 
     return {
       unlocked: false,
-      title: "🔒 FOREST",
+      title: `🔒 FOREST • ${status.defeatedCount}/${status.requiredCount}`,
       prompt: "Forest terkunci • Selesaikan Chapter 1",
     };
   }
@@ -3839,11 +4095,16 @@ class VillageScene extends Phaser.Scene {
     defendButton,
     updateBattleUI
   ) {
+    // Power Strike harus terasa lebih kuat daripada serangan normal.
+    // Sebelumnya skill hanya menghitung ATK - DEF, sementara serangan
+    // normal juga mendapat bonus damage dari soal (20/30/45).
+    // Akibatnya skill justru bisa lebih lemah.
     const baseDamage =
       Math.max(
         1,
         this.getPlayerAttack() -
-          this.currentMonster.defense
+          this.currentMonster.defense +
+          (skills.powerStrike.bonusDamage || 30)
       );
 
     const damage =

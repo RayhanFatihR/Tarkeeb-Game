@@ -5,6 +5,7 @@ import StartScene from "./scenes/StartScene";
 import IntroScene from "./scenes/IntroScene";
 import VillageScene from "./scenes/VillageScene";
 import ForestScene from "./scenes/ForestScene";
+import DesertScene from "./scenes/DesertScene.js";
 
 function Game() {
   const gameRef = useRef(null);
@@ -64,6 +65,7 @@ function Game() {
         IntroScene,
         VillageScene,
         ForestScene,
+        DesertScene,
       ],
     };
 
