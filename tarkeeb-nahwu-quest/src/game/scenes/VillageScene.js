@@ -363,7 +363,7 @@ class VillageScene extends Phaser.Scene {
       new NPC(
         this,
         220,
-        415,
+        420,
         "Grammar Master"
       );
 
@@ -434,7 +434,8 @@ class VillageScene extends Phaser.Scene {
         600,
         "grassTilePixel"
       )
-      .setDepth(-20);
+      .setDepth(-20)
+      .setTileScale(0.62, 0.62);
 
     // ==================================================
     // ROADS
@@ -444,21 +445,23 @@ class VillageScene extends Phaser.Scene {
       .tileSprite(
         400,
         300,
-        128,
+        112,
         600,
         "pathTilePixel"
       )
-      .setDepth(-10);
+      .setDepth(-10)
+      .setTileScale(0.62, 0.62);
 
     this.add
       .tileSprite(
         400,
         300,
         800,
-        112,
+        96,
         "pathTilePixel"
       )
-      .setDepth(-10);
+      .setDepth(-10)
+      .setTileScale(0.62, 0.62);
 
     // ==================================================
     // OBSTACLES
@@ -490,14 +493,14 @@ class VillageScene extends Phaser.Scene {
 
     this.createHouse(
       180,
-      230,
+      205,
       "Nahwu House",
       "nahwuHousePixel"
     );
 
     this.createHouse(
       620,
-      230,
+      205,
       "Grammar House",
       "grammarHousePixel"
     );
@@ -506,17 +509,17 @@ class VillageScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(80, 100);
+    this.createTree(82, 112);
 
-    this.createTree(720, 100);
+    this.createTree(718, 112);
 
-    this.createTree(80, 500);
+    this.createTree(84, 500);
 
-    this.createTree(720, 500);
+    this.createTree(718, 500);
 
-    this.createTree(150, 520);
+    this.createTree(152, 520);
 
-    this.createTree(650, 520);
+    this.createTree(648, 520);
 
     // ==================================================
     // CHESTS
@@ -526,19 +529,19 @@ class VillageScene extends Phaser.Scene {
 
     this.createChest(
       560,
-      405,
+      410,
       items.swordOfIsim
     );
 
     this.createChest(
-      285,
-      500,
+      288,
+      505,
       items.shieldOfMubtada
     );
 
     this.createChest(
-      655,
-      380,
+      657,
+      385,
       items.ringOfRafa
     );
 
@@ -597,7 +600,7 @@ class VillageScene extends Phaser.Scene {
     this.monsters.forEach(
       (monster, index) => {
         this.visualFoundation.animateMonster(
-          monster,
+          monster.body,
           index
         );
       }
@@ -944,7 +947,7 @@ class VillageScene extends Phaser.Scene {
         }
 
         this.visualFoundation.syncMonsterVisuals(
-          monster
+          monster.body
         );
       }
     );
@@ -1709,45 +1712,29 @@ class VillageScene extends Phaser.Scene {
         150
       );
 
+    const battleTexture =
+      this.currentMonster?.body?.texture?.key ||
+      "nahwuSlimePixel";
+
     const battleMonsterBody =
-      this.add.circle(
+      this.add.image(
         0,
         0,
-        22,
-        0xc53030
+        battleTexture
       );
 
-    const battleMonsterEyeLeft =
-      this.add.circle(
-        -7,
-        -3,
-        3,
-        0xffffff
-      );
+    battleMonsterBody.setDisplaySize(
+      this.currentMonster?.id === "irabGolem"
+        ? 120
+        : 105,
+      this.currentMonster?.id === "irabGolem"
+        ? 120
+        : 105
+    );
 
-    const battleMonsterEyeRight =
-      this.add.circle(
-        7,
-        -3,
-        3,
-        0xffffff
-      );
-
-    const battleMonsterMouth =
-      this.add.rectangle(
-        0,
-        8,
-        14,
-        3,
-        0x742a2a
-      );
-
-    this.battleMonsterVisual.add([
-      battleMonsterBody,
-      battleMonsterEyeLeft,
-      battleMonsterEyeRight,
-      battleMonsterMouth,
-    ]);
+    this.battleMonsterVisual.add(
+      battleMonsterBody
+    );
 
     this.battleMonsterVisual.setDepth(
       603
@@ -5103,8 +5090,8 @@ class VillageScene extends Phaser.Scene {
       );
 
     sprite.setDisplaySize(
-      74,
-      88
+      94,
+      112
     );
 
     npc.addAt(
@@ -5114,8 +5101,8 @@ class VillageScene extends Phaser.Scene {
 
     if (npc.nameText) {
       npc.nameText
-        .setY(43)
-        .setFontSize(12)
+        .setY(54)
+        .setFontSize(13)
         .setStroke(
           "#1A365D",
           3
@@ -5124,8 +5111,36 @@ class VillageScene extends Phaser.Scene {
 
     if (npc.interactionText) {
       npc.interactionText
-        .setY(-63)
+        .setY(-80)
         .setFontSize(13);
+    }
+
+    if (!npc.questMarker) {
+      npc.questMarker = this.add
+        .text(
+          0,
+          -92,
+          "!",
+          {
+            fontSize: "34px",
+            color: "#FFE066",
+            fontStyle: "bold",
+            stroke: "#7B341E",
+            strokeThickness: 6,
+          }
+        )
+        .setOrigin(0.5);
+
+      npc.add(npc.questMarker);
+
+      this.tweens.add({
+        targets: npc.questMarker,
+        y: -98,
+        duration: 650,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
     }
   }
 
@@ -5200,15 +5215,15 @@ class VillageScene extends Phaser.Scene {
 
     house
       .setDisplaySize(
-        180,
-        150
+        168,
+        138
       )
       .setDepth(10);
 
     this.add
       .text(
         x,
-        y + 88,
+        y + 78,
         name,
         {
           fontSize: "14px",
@@ -5226,9 +5241,9 @@ class VillageScene extends Phaser.Scene {
     const collider =
       this.add.rectangle(
         x,
-        y + 25,
-        135,
-        80,
+        y + 20,
+        118,
+        66,
         0xffffff,
         0
       );
@@ -5260,8 +5275,8 @@ class VillageScene extends Phaser.Scene {
 
     tree
       .setDisplaySize(
-        90,
-        112
+        118,
+        146
       )
       .setDepth(8);
 
@@ -5272,9 +5287,9 @@ class VillageScene extends Phaser.Scene {
     const collider =
       this.add.rectangle(
         x,
-        y + 28,
-        42,
-        46,
+        y + 36,
+        52,
+        54,
         0xffffff,
         0
       );
@@ -5320,8 +5335,8 @@ class VillageScene extends Phaser.Scene {
 
     chest.body
       .setDisplaySize(
-        54,
-        48
+        70,
+        62
       )
       .setDepth(20);
 
@@ -5329,7 +5344,7 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           x,
-          y + 34,
+          y + 42,
           "CHEST",
           {
             fontSize: "11px",

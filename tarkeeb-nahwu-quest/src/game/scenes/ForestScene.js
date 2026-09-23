@@ -1,6 +1,19 @@
 import Phaser from "phaser";
 import VisualFoundation from "./VisualFoundation";
 
+import playerWalkAsset from "../../assets/player/player_walk.png";
+
+import grammarMasterAsset from "../../assets/npc/grammar_master.png";
+
+import nahwuSlimeAsset from "../../assets/monsters/nahwu_slime.png";
+import grammarGoblinAsset from "../../assets/monsters/grammar_goblin.png";
+import irabGolemAsset from "../../assets/monsters/irab_golem.png";
+
+import treeAsset from "../../assets/objects/tree_01.png";
+import forestGateAsset from "../../assets/objects/forest_gate.png";
+import grassTileAsset from "../../assets/tiles/grass_tile.png";
+import pathTileAsset from "../../assets/tiles/path_tile.png";
+
 import Monster from "../objects/Monster";
 
 import monsters from "../data/monsters";
@@ -11,6 +24,63 @@ import skillQuestions from "../data/skillQuestions";
 class ForestScene extends Phaser.Scene {
   constructor() {
     super("ForestScene");
+  }
+
+  // ==================================================
+  // PRELOAD PIXEL ASSETS
+  // ==================================================
+
+  preload() {
+    this.load.spritesheet(
+      "playerWalkPixel",
+      playerWalkAsset,
+      {
+        frameWidth: 320,
+        frameHeight: 320,
+      }
+    );
+
+    // Sementara Penjaga Isim memakai sprite NPC yang sudah tersedia.
+    // Nanti bisa diganti asset khusus tanpa mengubah logic quest.
+    this.load.image(
+      "forestGuardianPixel",
+      grammarMasterAsset
+    );
+
+    this.load.image(
+      "nahwuSlimePixel",
+      nahwuSlimeAsset
+    );
+
+    this.load.image(
+      "grammarGoblinPixel",
+      grammarGoblinAsset
+    );
+
+    this.load.image(
+      "irabGolemPixel",
+      irabGolemAsset
+    );
+
+    this.load.image(
+      "treePixel",
+      treeAsset
+    );
+
+    this.load.image(
+      "forestGatePixel",
+      forestGateAsset
+    );
+
+    this.load.image(
+      "grassTilePixel",
+      grassTileAsset
+    );
+
+    this.load.image(
+      "pathTilePixel",
+      pathTileAsset
+    );
   }
 
   // ==================================================
@@ -151,13 +221,47 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createWorld() {
-    this.add.rectangle(400, 300, 800, 600, 0x3f6b3f);
-
-    this.add.rectangle(400, 300, 110, 600, 0xb8a27a);
-    this.add.rectangle(400, 350, 800, 80, 0xb8a27a);
+    // ==================================================
+    // PIXEL FOREST GROUND
+    // ==================================================
 
     this.add
-      .text(400, 75, "FOREST OF ISIM", {
+      .tileSprite(
+        400,
+        300,
+        800,
+        600,
+        "grassTilePixel"
+      )
+      .setDepth(-20)
+      .setTileScale(0.62, 0.62);
+
+    // Jalan vertikal utama dari Village ke Forest.
+    this.add
+      .tileSprite(
+        400,
+        300,
+        112,
+        600,
+        "pathTilePixel"
+      )
+      .setDepth(-10)
+      .setTileScale(0.62, 0.62);
+
+    // Jalan horizontal menuju area monster / quest.
+    this.add
+      .tileSprite(
+        400,
+        350,
+        800,
+        96,
+        "pathTilePixel"
+      )
+      .setDepth(-10)
+      .setTileScale(0.62, 0.62);
+
+    this.add
+      .text(400, 78, "FOREST OF ISIM", {
         fontSize: "30px",
         color: "#ffffff",
         fontStyle: "bold",
@@ -178,36 +282,36 @@ class ForestScene extends Phaser.Scene {
     // TREES
     // ==================================================
 
-    this.createTree(80, 90);
-    this.createTree(250, 110);
-    this.createTree(530, 110);
-    this.createTree(720, 90);
+    this.createTree(78, 128);
+    this.createTree(235, 125);
+    this.createTree(565, 125);
+    this.createTree(722, 128);
 
-    this.createTree(85, 470);
-    this.createTree(250, 520);
-    this.createTree(560, 520);
-    this.createTree(720, 470);
+    this.createTree(82, 500);
+    this.createTree(235, 520);
+    this.createTree(565, 520);
+    this.createTree(718, 500);
 
-    this.createTree(150, 270);
-    this.createTree(650, 270);
+    this.createTree(132, 300);
+    this.createTree(668, 300);
 
     // ==================================================
     // ROCKS
     // ==================================================
 
-    this.createRock(175, 175);
-    this.createRock(625, 175);
-    this.createRock(165, 400);
-    this.createRock(640, 410);
+    this.createRock(165, 195);
+    this.createRock(635, 195);
+    this.createRock(155, 420);
+    this.createRock(650, 420);
 
     // ==================================================
     // SMALL FOREST DETAILS
     // ==================================================
 
-    this.createBush(320, 150);
-    this.createBush(470, 150);
-    this.createBush(320, 500);
-    this.createBush(470, 500);
+    this.createBush(300, 170);
+    this.createBush(500, 170);
+    this.createBush(300, 500);
+    this.createBush(500, 500);
 
     // ==================================================
     // FOREST MONSTERS
@@ -217,22 +321,22 @@ class ForestScene extends Phaser.Scene {
 
     const slime = new Monster(
       this,
-      220,
-      220,
+      205,
+      245,
       monsters.nahwuSlime
     );
 
     const goblin = new Monster(
       this,
-      560,
-      220,
+      595,
+      245,
       monsters.grammarGoblin
     );
 
     const golem = new Monster(
       this,
-      620,
-      450,
+      650,
+      455,
       monsters.irabGolem
     );
 
@@ -245,7 +349,7 @@ class ForestScene extends Phaser.Scene {
     this.monsters.forEach(
       (monster, index) => {
         this.visualFoundation.animateMonster(
-          monster,
+          monster.body,
           index
         );
       }
@@ -267,9 +371,39 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createPlayer() {
-    this.player = this.add.circle(400, 400, 25, 0x3182ce);
-    this.physics.add.existing(this.player);
-    this.player.body.setCollideWorldBounds(true);
+    this.createPlayerAnimations();
+
+    this.player =
+      this.physics.add.sprite(
+        400,
+        405,
+        "playerWalkPixel",
+        0
+      );
+
+    this.player
+      .setDisplaySize(
+        76,
+        76
+      )
+      .setDepth(30);
+
+    // Ukuran body mengikuti bagian kaki karakter,
+    // bukan seluruh gambar sprite 320x320.
+    this.player.body.setSize(
+      120,
+      92
+    );
+
+    this.player.body.setOffset(
+      100,
+      190
+    );
+
+    this.player.body.setCollideWorldBounds(
+      true
+    );
+
     this.playerSpeed = 200;
 
     this.keys = this.input.keyboard.addKeys({
@@ -282,13 +416,20 @@ class ForestScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
 
     this.playerLabel = this.add
-      .text(this.player.x, this.player.y + 35, "PLAYER", {
-        fontSize: "14px",
-        color: "#ffffff",
-        fontStyle: "bold",
-      })
+      .text(
+        this.player.x,
+        this.player.y + 46,
+        "PLAYER",
+        {
+          fontSize: "12px",
+          color: "#ffffff",
+          fontStyle: "bold",
+          stroke: "#1A365D",
+          strokeThickness: 3,
+        }
+      )
       .setOrigin(0.5)
-      .setDepth(30);
+      .setDepth(31);
 
     this.interactText = this.add
       .text(400, 545, "", {
@@ -313,42 +454,82 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createForestQuestNPC() {
-    this.forestQuestNPC = this.add.circle(
-      220,
-      360,
-      24,
-      0xf6c56a
+    // ==================================================
+    // PIXEL FOREST GUARDIAN
+    // ==================================================
+
+    this.forestQuestNPC = this.add.image(
+      210,
+      365,
+      "forestGuardianPixel"
     );
 
-    this.forestQuestNPC.setDepth(25);
+    this.forestQuestNPC
+      .setDisplaySize(94, 112)
+      .setDepth(25);
+
+    // Bayangan kecil agar NPC terasa menempel di tanah.
+    this.forestQuestNPCShadow = this.add
+      .ellipse(
+        210,
+        407,
+        44,
+        12,
+        0x000000,
+        0.22
+      )
+      .setDepth(24);
 
     this.forestQuestNPCLabel = this.add
       .text(
-        220,
-        397,
+        210,
+        426,
         "Penjaga Isim",
         {
           fontSize: "13px",
           color: "#ffffff",
           fontStyle: "bold",
+          stroke: "#1A365D",
+          strokeThickness: 3,
         }
       )
       .setOrigin(0.5)
-      .setDepth(25);
+      .setDepth(27);
 
+    // Quest marker seperti Grammar Master di Village.
     this.forestQuestNPCIcon = this.add
       .text(
-        220,
-        360,
+        210,
+        292,
         "!",
         {
-          fontSize: "22px",
-          color: "#1A365D",
+          fontSize: "34px",
+          color: "#FFE066",
           fontStyle: "bold",
+          stroke: "#7B341E",
+          strokeThickness: 6,
         }
       )
       .setOrigin(0.5)
-      .setDepth(26);
+      .setDepth(28);
+
+    this.tweens.add({
+      targets: this.forestQuestNPCIcon,
+      y: 286,
+      duration: 650,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.tweens.add({
+      targets: this.forestQuestNPC,
+      y: 362,
+      duration: 1200,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
   }
 
   // ==================================================
@@ -716,11 +897,22 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createVillageGate() {
-    this.villageGate = this.add.rectangle(400, 555, 130, 55, 0x553c2e);
-    this.villageGate.setStrokeStyle(4, 0xd4af37);
+    this.villageGate =
+      this.add.image(
+        400,
+        548,
+        "forestGatePixel"
+      );
+
+    this.villageGate
+      .setDisplaySize(
+        120,
+        154
+      )
+      .setDepth(12);
 
     this.villageGateText = this.add
-      .text(400, 515, "NAHWU VILLAGE", {
+      .text(400, 475, "NAHWU VILLAGE", {
         fontSize: "13px",
         color: "#ffffff",
         backgroundColor: "#1A365D",
@@ -731,7 +923,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(20);
 
     this.villageGatePrompt = this.add
-      .text(400, 485, "[ E ] Kembali ke Nahwu Village", {
+      .text(400, 505, "[ E ] Kembali ke Nahwu Village", {
         fontSize: "15px",
         color: "#ffffff",
         backgroundColor: "#1A365D",
@@ -778,7 +970,12 @@ class ForestScene extends Phaser.Scene {
       this.player.body.setVelocity(0, 0);
     }
 
-    this.playerLabel.setPosition(this.player.x, this.player.y + 35);
+    this.updatePlayerPixelAnimation();
+
+    this.playerLabel.setPosition(
+      this.player.x,
+      this.player.y + 46
+    );
 
     // Monsters only chase while the player is free to move.
     this.monsters.forEach((monster) => {
@@ -791,7 +988,7 @@ class ForestScene extends Phaser.Scene {
       }
 
       this.visualFoundation.syncMonsterVisuals(
-        monster
+        monster.body
       );
     });
 
@@ -911,14 +1108,44 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createTree(x, y) {
-    this.add.rectangle(x, y + 30, 18, 45, 0x8b4513);
-    this.add.circle(x, y, 32, 0x1f6b3a);
-    this.add.circle(x - 18, y + 10, 23, 0x2e7d4f);
-    this.add.circle(x + 18, y + 10, 23, 0x2e7d4f);
+    const tree =
+      this.add.image(
+        x,
+        y,
+        "treePixel"
+      );
 
-    const collider = this.add.rectangle(x, y + 18, 55, 65, 0xffffff, 0);
-    this.physics.add.existing(collider, true);
-    this.obstacles.add(collider);
+    tree
+      .setDisplaySize(
+        118,
+        146
+      )
+      .setDepth(8);
+
+    this.visualFoundation.animateTree([
+      tree,
+    ]);
+
+    // Collision hanya berada pada batang / bagian bawah
+    // agar kanopi pohon tidak menjadi tembok besar.
+    const collider =
+      this.add.rectangle(
+        x,
+        y + 36,
+        52,
+        54,
+        0xffffff,
+        0
+      );
+
+    this.physics.add.existing(
+      collider,
+      true
+    );
+
+    this.obstacles.add(
+      collider
+    );
   }
 
   // ==================================================
@@ -926,10 +1153,40 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createRock(x, y) {
-    this.add.circle(x, y, 18, 0x718096);
-    this.add.circle(x - 8, y - 5, 8, 0xa0aec0);
+    // Pixel-style rock dari block sederhana.
+    // Tidak memakai circle supaya lebih menyatu dengan asset pixel.
+    const shadow = this.add
+      .ellipse(x, y + 14, 46, 12, 0x000000, 0.18)
+      .setDepth(4);
 
-    const collider = this.add.rectangle(x, y, 42, 36, 0xffffff, 0);
+    const base = this.add
+      .rectangle(x, y + 2, 42, 26, 0x667085)
+      .setDepth(5);
+
+    const top = this.add
+      .rectangle(x - 4, y - 8, 30, 15, 0x8892a3)
+      .setDepth(6);
+
+    const highlight = this.add
+      .rectangle(x - 10, y - 11, 10, 5, 0xb7bec9)
+      .setDepth(7);
+
+    this.visualFoundation.animateRock([
+      base,
+      top,
+      highlight,
+      shadow,
+    ]);
+
+    const collider = this.add.rectangle(
+      x,
+      y + 5,
+      40,
+      27,
+      0xffffff,
+      0
+    );
+
     this.physics.add.existing(collider, true);
     this.obstacles.add(collider);
   }
@@ -939,9 +1196,34 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   createBush(x, y) {
-    this.add.circle(x, y, 22, 0x285e3b);
-    this.add.circle(x - 15, y + 5, 16, 0x2f855a);
-    this.add.circle(x + 15, y + 5, 16, 0x2f855a);
+    // Bush dibuat dari block pixel sederhana agar tidak terasa vector.
+    const back = this.add
+      .rectangle(x, y + 4, 50, 26, 0x285e3b)
+      .setDepth(5);
+
+    const left = this.add
+      .rectangle(x - 15, y - 7, 24, 20, 0x2f855a)
+      .setDepth(6);
+
+    const middle = this.add
+      .rectangle(x, y - 11, 26, 24, 0x38a169)
+      .setDepth(7);
+
+    const right = this.add
+      .rectangle(x + 15, y - 5, 22, 18, 0x2f855a)
+      .setDepth(6);
+
+    const highlight = this.add
+      .rectangle(x - 5, y - 16, 9, 5, 0x68d391)
+      .setDepth(8);
+
+    this.visualFoundation.animateBush([
+      back,
+      left,
+      middle,
+      right,
+      highlight,
+    ]);
   }
 
   // ==================================================
@@ -1382,45 +1664,29 @@ class ForestScene extends Phaser.Scene {
         150
       );
 
+    const battleTexture =
+      this.currentMonster?.body?.texture?.key ||
+      "nahwuSlimePixel";
+
     const battleMonsterBody =
-      this.add.circle(
+      this.add.image(
         0,
         0,
-        22,
-        0xc53030
+        battleTexture
       );
 
-    const battleMonsterEyeLeft =
-      this.add.circle(
-        -7,
-        -3,
-        3,
-        0xffffff
-      );
+    battleMonsterBody.setDisplaySize(
+      this.currentMonster?.id === "irabGolem"
+        ? 120
+        : 105,
+      this.currentMonster?.id === "irabGolem"
+        ? 120
+        : 105
+    );
 
-    const battleMonsterEyeRight =
-      this.add.circle(
-        7,
-        -3,
-        3,
-        0xffffff
-      );
-
-    const battleMonsterMouth =
-      this.add.rectangle(
-        0,
-        8,
-        14,
-        3,
-        0x742a2a
-      );
-
-    this.battleMonsterVisual.add([
-      battleMonsterBody,
-      battleMonsterEyeLeft,
-      battleMonsterEyeRight,
-      battleMonsterMouth,
-    ]);
+    this.battleMonsterVisual.add(
+      battleMonsterBody
+    );
 
     this.battleMonsterVisual.setDepth(
       603
@@ -4390,6 +4656,137 @@ class ForestScene extends Phaser.Scene {
       xpBonus,
       leveledUp,
     };
+  }
+
+  // ==================================================
+  // PIXEL PLAYER ANIMATIONS
+  // ==================================================
+
+  createPlayerAnimations() {
+    const animationConfigs = [
+      {
+        key: "playerWalkDown",
+        start: 0,
+        end: 3,
+      },
+      {
+        key: "playerWalkLeft",
+        start: 4,
+        end: 7,
+      },
+      {
+        key: "playerWalkRight",
+        start: 8,
+        end: 11,
+      },
+      {
+        key: "playerWalkUp",
+        start: 12,
+        end: 15,
+      },
+    ];
+
+    animationConfigs.forEach(
+      (config) => {
+        if (
+          this.anims.exists(
+            config.key
+          )
+        ) {
+          return;
+        }
+
+        this.anims.create({
+          key: config.key,
+
+          frames:
+            this.anims.generateFrameNumbers(
+              "playerWalkPixel",
+              {
+                start: config.start,
+                end: config.end,
+              }
+            ),
+
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+    );
+  }
+
+  updatePlayerPixelAnimation() {
+    if (
+      !this.player ||
+      !this.player.body
+    ) {
+      return;
+    }
+
+    const vx =
+      this.player.body.velocity.x;
+
+    const vy =
+      this.player.body.velocity.y;
+
+    if (
+      Math.abs(vx) < 1 &&
+      Math.abs(vy) < 1
+    ) {
+      this.stopPlayerPixelAnimation();
+      return;
+    }
+
+    if (
+      Math.abs(vx) >
+      Math.abs(vy)
+    ) {
+      if (vx < 0) {
+        this.player.play(
+          "playerWalkLeft",
+          true
+        );
+      } else {
+        this.player.play(
+          "playerWalkRight",
+          true
+        );
+      }
+
+      return;
+    }
+
+    if (vy < 0) {
+      this.player.play(
+        "playerWalkUp",
+        true
+      );
+    } else {
+      this.player.play(
+        "playerWalkDown",
+        true
+      );
+    }
+  }
+
+  stopPlayerPixelAnimation() {
+    if (!this.player) {
+      return;
+    }
+
+    if (
+      this.player.anims &&
+      this.player.anims.isPlaying
+    ) {
+      this.player.anims.stop();
+    }
+
+    if (
+      this.player.texture?.key ===
+      "playerWalkPixel"
+    ) {
+      this.player.setFrame(0);
+    }
   }
 
   // ==================================================

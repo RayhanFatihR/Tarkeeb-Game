@@ -59,43 +59,122 @@ class Monster {
     // STATUS
     // ==================================================
 
-    this.destroyed =
-      false;
-
-    this.isNearby =
-      false;
+    this.destroyed = false;
+    this.isNearby = false;
 
     // ==================================================
-    // BODY
+    // PIXEL MONSTER BODY
     // ==================================================
+    // Monster lama memakai circle merah. Mulai Step 2C.2,
+    // body menggunakan PNG yang sudah ada di assets/monsters.
 
-    this.body =
-      scene.add.circle(
-        x,
-        y,
-        25,
-        0xc53030
+    const monsterVisuals = {
+      nahwuSlime: {
+        texture: "nahwuSlimePixel",
+        width: 76,
+        height: 76,
+        bodyWidth: 46,
+        bodyHeight: 34,
+        bodyOffsetY: 18,
+      },
+
+      grammarGoblin: {
+        texture: "grammarGoblinPixel",
+        width: 78,
+        height: 78,
+        bodyWidth: 38,
+        bodyHeight: 46,
+        bodyOffsetY: 12,
+      },
+
+      irabGolem: {
+        texture: "irabGolemPixel",
+        width: 88,
+        height: 88,
+        bodyWidth: 52,
+        bodyHeight: 52,
+        bodyOffsetY: 12,
+      },
+    };
+
+    const visual =
+      monsterVisuals[this.id];
+
+    if (
+      visual &&
+      scene.textures.exists(
+        visual.texture
+      )
+    ) {
+      this.body =
+        scene.physics.add.image(
+          x,
+          y,
+          visual.texture
+        );
+
+      this.body
+        .setDisplaySize(
+          visual.width,
+          visual.height
+        )
+        .setDepth(24);
+
+      // Collision dibuat lebih kecil dari gambar supaya
+      // kaki / dasar monster terasa natural di map.
+      this.body.body.setSize(
+        visual.bodyWidth,
+        visual.bodyHeight
       );
 
-    // ==================================================
-    // EYES
-    // ==================================================
-
-    this.leftEye =
-      scene.add.circle(
-        x - 9,
-        y - 5,
-        5,
-        0xffffff
+      this.body.body.setOffset(
+        (
+          this.body.width -
+          visual.bodyWidth
+        ) / 2,
+        Math.max(
+          0,
+          this.body.height -
+            visual.bodyHeight -
+            visual.bodyOffsetY
+        )
       );
 
-    this.rightEye =
-      scene.add.circle(
-        x + 9,
-        y - 5,
-        5,
-        0xffffff
+      this.body.body.setImmovable(
+        true
       );
+
+      this.body.setData(
+        "monsterId",
+        this.id
+      );
+
+      this.body.setData(
+        "monsterName",
+        this.name
+      );
+    } else {
+      // Fallback supaya game tetap jalan kalau texture belum termuat.
+      this.body =
+        scene.add.circle(
+          x,
+          y,
+          25,
+          0xc53030
+        );
+
+      scene.physics.add.existing(
+        this.body
+      );
+
+      this.body.body.setImmovable(
+        true
+      );
+    }
+
+    // Mata dari prototype lama tidak lagi diperlukan.
+    this.leftEye = null;
+    this.rightEye = null;
 
     // ==================================================
     // NAME
@@ -105,15 +184,18 @@ class Monster {
       scene.add
         .text(
           x,
-          y + 38,
+          y + 48,
           this.name,
           {
-            fontSize: "14px",
+            fontSize: "13px",
             color: "#ffffff",
             fontStyle: "bold",
+            stroke: "#1A202C",
+            strokeThickness: 4,
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(26);
 
     // ==================================================
     // HP BACKGROUND
@@ -122,11 +204,13 @@ class Monster {
     this.hpBackground =
       scene.add.rectangle(
         x,
-        y - 43,
+        y - 50,
         60,
         8,
         0x1a365d
       );
+
+    this.hpBackground.setDepth(26);
 
     // ==================================================
     // HP BAR
@@ -135,16 +219,15 @@ class Monster {
     this.hpBar =
       scene.add.rectangle(
         x - 30,
-        y - 43,
+        y - 50,
         60,
         8,
         0xdc2626
       );
 
-    this.hpBar.setOrigin(
-      0,
-      0.5
-    );
+    this.hpBar
+      .setOrigin(0, 0.5)
+      .setDepth(27);
 
     // ==================================================
     // DIFFICULTY
@@ -154,28 +237,19 @@ class Monster {
       scene.add
         .text(
           x,
-          y + 55,
+          y + 64,
           this.getDifficultyDisplay(),
           {
-            fontSize: "11px",
+            fontSize: "10px",
             color:
               this.getDifficultyColor(),
             fontStyle: "bold",
+            stroke: "#1A202C",
+            strokeThickness: 3,
           }
         )
-        .setOrigin(0.5);
-
-    // ==================================================
-    // PHYSICS
-    // ==================================================
-
-    scene.physics.add.existing(
-      this.body
-    );
-
-    this.body.body.setImmovable(
-      true
-    );
+        .setOrigin(0.5)
+        .setDepth(26);
 
     // ==================================================
     // INTERACTION
@@ -185,7 +259,7 @@ class Monster {
       scene.add
         .text(
           x,
-          y - 70,
+          y - 78,
           "",
           {
             fontSize: "14px",
@@ -200,7 +274,8 @@ class Monster {
             },
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(28);
 
     this.interactionText.setVisible(
       false
@@ -280,8 +355,7 @@ class Monster {
     if (
       distance < 80
     ) {
-      this.isNearby =
-        true;
+      this.isNearby = true;
 
       this.interactionText.setText(
         `[ E ] Lawan ${this.name}`
@@ -291,8 +365,7 @@ class Monster {
         true
       );
     } else {
-      this.isNearby =
-        false;
+      this.isNearby = false;
 
       this.interactionText.setVisible(
         false
@@ -312,8 +385,7 @@ class Monster {
       );
 
     this.hpBar.setDisplaySize(
-      60 *
-        percentage,
+      60 * percentage,
       8
     );
 
@@ -321,29 +393,39 @@ class Monster {
     // POSITION
     // ==================================================
 
+    if (
+      this.body &&
+      this.body.active
+    ) {
+      this.body.setPosition(
+        this.x,
+        this.y
+      );
+    }
+
     this.nameText.setPosition(
       this.x,
-      this.y + 38
+      this.y + 48
     );
 
     this.difficultyText.setPosition(
       this.x,
-      this.y + 55
+      this.y + 64
     );
 
     this.hpBackground.setPosition(
       this.x,
-      this.y - 43
+      this.y - 50
     );
 
     this.hpBar.setPosition(
       this.x - 30,
-      this.y - 43
+      this.y - 50
     );
 
     this.interactionText.setPosition(
       this.x,
-      this.y - 70
+      this.y - 78
     );
   }
 
@@ -402,13 +484,31 @@ class Monster {
       return;
     }
 
-    this.destroyed =
-      true;
-
-    this.isNearby =
-      false;
+    this.destroyed = true;
+    this.isNearby = false;
 
     if (this.body) {
+      const shadow =
+        this.body.getData?.(
+          "monsterVisualShadow"
+        );
+
+      const idleTween =
+        this.body.getData?.(
+          "monsterVisualIdleTween"
+        );
+
+      if (idleTween) {
+        idleTween.stop();
+      }
+
+      if (
+        shadow &&
+        shadow.active
+      ) {
+        shadow.destroy();
+      }
+
       this.body.destroy();
       this.body = null;
     }
