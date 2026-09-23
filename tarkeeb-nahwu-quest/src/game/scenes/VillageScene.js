@@ -477,7 +477,7 @@ class VillageScene extends Phaser.Scene {
     this.add
       .text(
         400,
-        100,
+        178,
         "NAHWU VILLAGE",
         {
           fontSize: "32px",
@@ -1192,15 +1192,15 @@ class VillageScene extends Phaser.Scene {
   createForestGate() {
     this.forestGate =
       this.add.image(
-        740,
-        300,
+        400,
+        58,
         "forestGatePixel"
       );
 
     this.forestGate
       .setDisplaySize(
-        110,
-        145
+        104,
+        128
       )
       .setDepth(12);
 
@@ -1208,10 +1208,10 @@ class VillageScene extends Phaser.Scene {
     // tampilan gate tetap memakai PNG pixel art.
     this.forestGateCollider =
       this.add.rectangle(
-        740,
-        315,
-        70,
-        85,
+        400,
+        76,
+        66,
+        58,
         0xffffff,
         0
       );
@@ -1228,8 +1228,8 @@ class VillageScene extends Phaser.Scene {
     this.forestGateText =
       this.add
         .text(
-          740,
-          210,
+          400,
+          128,
           "🌳 FOREST",
           {
             fontSize: "14px",
@@ -1246,8 +1246,8 @@ class VillageScene extends Phaser.Scene {
     this.forestGatePrompt =
       this.add
         .text(
-          740,
-          395,
+          400,
+          152,
           "[ E ] Masuk Forest",
           {
             fontSize: "15px",
@@ -4553,73 +4553,80 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // CREATE HUD
+  // CREATE HUD — STEP 2D.1
   // ==================================================
 
   createHUD() {
-    this.levelText =
-      this.add.text(
-        20,
-        15,
-        "",
-        {
-          fontSize: "18px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      );
+    const hudDepth = 2000;
 
-    this.goldText =
-      this.add.text(
-        620,
-        15,
-        "",
-        {
-          fontSize: "18px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      );
+    // --------------------------------------------------
+    // LEFT STATUS CARD
+    // --------------------------------------------------
 
-    this.xpText =
-      this.add.text(
-        20,
-        42,
-        "",
-        {
-          fontSize: "14px",
-          color: "#ffffff",
-        }
-      );
+    this.hudLeftPanel = this.add
+      .rectangle(14, 12, 292, 88, 0x10233f, 0.9)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
 
-    this.xpBarBackground =
-      this.add.rectangle(
-        20,
-        68,
-        250,
-        16,
-        0x1a365d,
-        0.8
-      );
+    this.levelText = this.add
+      .text(28, 23, "", {
+        fontSize: "17px",
+        color: "#FFF7D6",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 3,
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    this.xpBarBackground.setOrigin(
-      0,
-      0.5
-    );
+    this.xpText = this.add
+      .text(28, 51, "", {
+        fontSize: "12px",
+        color: "#DCEBFF",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    this.xpBarFill =
-      this.add.rectangle(
-        20,
-        68,
-        250,
-        16,
-        0xd4af37
-      );
+    this.xpBarBackground = this.add
+      .rectangle(28, 78, 250, 12, 0x07111f, 0.95)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(1, 0x7297c7, 0.75);
 
-    this.xpBarFill.setOrigin(
-      0,
-      0.5
-    );
+    this.xpBarFill = this.add
+      .rectangle(30, 78, 246, 8, 0x5fb3ff, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 2)
+      .setScrollFactor(0);
+
+    // --------------------------------------------------
+    // GOLD CARD
+    // --------------------------------------------------
+
+    this.hudGoldPanel = this.add
+      .rectangle(626, 12, 160, 48, 0x10233f, 0.9)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
+
+    this.goldText = this.add
+      .text(706, 36, "", {
+        fontSize: "16px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
   }
 
   // ==================================================
@@ -4627,52 +4634,30 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   updateHUD() {
-    const level =
-      Number(
-        this.playerData.level
-      ) || 1;
+    const level = Number(this.playerData.level) || 1;
+    const xp = Number(this.playerData.xp) || 0;
+    const gold = Number(this.playerData.gold) || 0;
 
-    const xp =
-      Number(
-        this.playerData.xp
-      ) || 0;
-
-    const gold =
-      Number(
-        this.playerData.gold
-      ) || 0;
-
-    this.playerData.level =
-      level;
-
-    this.playerData.xp =
-      xp;
-
-    this.playerData.gold =
-      gold;
+    this.playerData.level = level;
+    this.playerData.xp = xp;
+    this.playerData.gold = gold;
 
     this.levelText.setText(
-      `LVL ${level} — ${this.getLevelTitle(level)}`
+      `LVL ${level}  •  ${this.getLevelTitle(level)}`
     );
 
-    this.goldText.setText(
-      `GOLD: ${gold}`
-    );
+    this.goldText.setText(`GOLD  ${gold}`);
+    this.xpText.setText(`XP  ${xp} / ${this.xpNeeded}`);
 
-    this.xpText.setText(
-      `XP ${xp} / ${this.xpNeeded}`
+    const percentage = Phaser.Math.Clamp(
+      xp / this.xpNeeded,
+      0,
+      1
     );
-
-    const percentage =
-      Phaser.Math.Clamp(
-        xp / this.xpNeeded,
-        0,
-        1
-      );
 
     this.xpBarFill.setDisplaySize(
-      250 * percentage,
-      16
+      Math.max(0, 246 * percentage),
+      8
     );
   }
 
@@ -6231,78 +6216,87 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // QUEST HUD
+  // QUEST HUD — STEP 2D.1
   // ==================================================
 
   showQuestHUD() {
     this.clearQuestHUD();
 
-    if (
-      !this.activeQuest
-    ) {
+    if (!this.activeQuest) {
       return;
     }
 
     this.questObjects = [];
 
-    const panel =
-      this.add.rectangle(
-        610,
-        110,
-        300,
-        105,
-        0x1a365d,
-        0.95
-      );
+    const hudDepth = 2000;
+    const x = 474;
+    const y = 74;
+    const width = 312;
+    const height = 118;
 
-    panel.setDepth(50);
+    const panel = this.add
+      .rectangle(x, y, width, height, 0x10233f, 0.92)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
 
-    const label =
-      this.add.text(
-        475,
-        75,
-        "QUEST",
-        {
-          fontSize: "16px",
-          color: "#D4AF37",
-          fontStyle: "bold",
-        }
-      );
+    const label = this.add
+      .text(x + 14, y + 10, "ACTIVE QUEST", {
+        fontSize: "12px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    label.setDepth(51);
+    const title = this.add
+      .text(x + 14, y + 32, this.activeQuest.title, {
+        fontSize: "14px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
+        wordWrap: { width: width - 28 },
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    const title =
-      this.add.text(
-        475,
-        100,
-        this.activeQuest.title,
-        {
-          fontSize: "15px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      );
+    const current = Number(this.activeQuest.progress) || 0;
+    const required = Math.max(1, Number(this.activeQuest.requiredProgress) || 1);
+    const ratio = Phaser.Math.Clamp(current / required, 0, 1);
 
-    title.setDepth(51);
+    const progress = this.add
+      .text(x + 14, y + 72, `Progress  ${current} / ${required}`, {
+        fontSize: "12px",
+        color: "#DCEBFF",
+        fontStyle: "bold",
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    const progress =
-      this.add.text(
-        475,
-        125,
-        `Progress: ${this.activeQuest.progress} / ${this.activeQuest.requiredProgress}`,
-        {
-          fontSize: "14px",
-          color: "#ffffff",
-        }
-      );
+    const barBackground = this.add
+      .rectangle(x + 14, y + 102, width - 28, 10, 0x07111f, 0.95)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(1, 0x7297c7, 0.65);
 
-    progress.setDepth(51);
+    const barFill = this.add
+      .rectangle(x + 16, y + 102, Math.max(0, (width - 32) * ratio), 6, 0xd4af37, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 2)
+      .setScrollFactor(0);
 
     this.questObjects.push(
       panel,
       label,
       title,
-      progress
+      progress,
+      barBackground,
+      barFill
     );
   }
 

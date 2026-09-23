@@ -755,7 +755,7 @@ class ForestScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // FOREST QUEST HUD
+  // FOREST QUEST HUD — STEP 2D.1
   // ==================================================
 
   showForestQuestHUD() {
@@ -767,63 +767,75 @@ class ForestScene extends Phaser.Scene {
 
     this.forestQuestObjects = [];
 
-    const panel = this.add.rectangle(
-      590,
-      130,
-      330,
-      110,
-      0x1A365D,
-      0.95
-    );
+    const hudDepth = 2000;
+    const x = 474;
+    const y = 74;
+    const width = 312;
+    const height = 118;
 
-    panel.setDepth(45);
+    const panel = this.add
+      .rectangle(x, y, width, height, 0x10233f, 0.92)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
+
+    const label = this.add
+      .text(x + 14, y + 10, "ACTIVE QUEST", {
+        fontSize: "12px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
     const title = this.add
-      .text(
-        440,
-        98,
-        "QUEST",
-        {
-          fontSize: "16px",
-          color: "#D4AF37",
-          fontStyle: "bold",
-        }
-      )
-      .setDepth(46);
+      .text(x + 14, y + 32, this.forestQuest.title, {
+        fontSize: "14px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
+        wordWrap: { width: width - 28 },
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    const questTitle = this.add
-      .text(
-        440,
-        124,
-        this.forestQuest.title,
-        {
-          fontSize: "14px",
-          color: "#ffffff",
-          fontStyle: "bold",
-          wordWrap: {
-            width: 275,
-          },
-        }
-      )
-      .setDepth(46);
+    const current = Number(this.forestQuest.progress) || 0;
+    const required = Math.max(1, Number(this.forestQuest.requiredProgress) || 1);
+    const ratio = Phaser.Math.Clamp(current / required, 0, 1);
 
     const progress = this.add
-      .text(
-        440,
-        168,
-        `Monster: ${this.forestQuest.progress} / ${this.forestQuest.requiredProgress}`,
-        {
-          fontSize: "14px",
-          color: "#ffffff",
-        }
-      )
-      .setDepth(46);
+      .text(x + 14, y + 72, `Monster  ${current} / ${required}`, {
+        fontSize: "12px",
+        color: "#DCEBFF",
+        fontStyle: "bold",
+      })
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
+
+    const barBackground = this.add
+      .rectangle(x + 14, y + 102, width - 28, 10, 0x07111f, 0.95)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(1, 0x7297c7, 0.65);
+
+    const barFill = this.add
+      .rectangle(x + 16, y + 102, Math.max(0, (width - 32) * ratio), 6, 0xd4af37, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 2)
+      .setScrollFactor(0);
 
     this.forestQuestObjects.push(
       panel,
+      label,
       title,
-      questTitle,
-      progress
+      progress,
+      barBackground,
+      barFill
     );
   }
 
@@ -4790,44 +4802,72 @@ class ForestScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // HUD
+  // HUD — STEP 2D.1
   // ==================================================
 
   createHUD() {
-    this.add.rectangle(80, 35, 180, 42, 0x1a365d, 0.95).setDepth(200);
+    const hudDepth = 2000;
+
+    this.hudLeftPanel = this.add
+      .rectangle(14, 12, 292, 88, 0x10233f, 0.9)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
 
     this.levelText = this.add
-      .text(80, 35, "LVL 1", {
+      .text(28, 23, "", {
         fontSize: "17px",
-        color: "#ffffff",
+        color: "#FFF7D6",
         fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 3,
       })
-      .setOrigin(0.5)
-      .setDepth(201);
-
-    this.add.rectangle(720, 35, 150, 42, 0x1a365d, 0.95).setDepth(200);
-
-    this.goldText = this.add
-      .text(720, 35, "GOLD: 0", {
-        fontSize: "17px",
-        color: "#ffffff",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(201);
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
     this.xpText = this.add
-      .text(20, 65, "XP 0 / 200", {
-        fontSize: "14px",
-        color: "#ffffff",
+      .text(28, 51, "", {
+        fontSize: "12px",
+        color: "#DCEBFF",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 2,
       })
-      .setDepth(201);
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
 
-    this.xpBarBackground = this.add.rectangle(20, 88, 250, 14, 0x1a365d, 0.8);
-    this.xpBarBackground.setOrigin(0, 0.5).setDepth(200);
+    this.xpBarBackground = this.add
+      .rectangle(28, 78, 250, 12, 0x07111f, 0.95)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(1, 0x7297c7, 0.75);
 
-    this.xpBarFill = this.add.rectangle(20, 88, 250, 14, 0xd4af37);
-    this.xpBarFill.setOrigin(0, 0.5).setDepth(201);
+    this.xpBarFill = this.add
+      .rectangle(30, 78, 246, 8, 0x5fb3ff, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(hudDepth + 2)
+      .setScrollFactor(0);
+
+    this.hudGoldPanel = this.add
+      .rectangle(626, 12, 160, 48, 0x10233f, 0.9)
+      .setOrigin(0, 0)
+      .setDepth(hudDepth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xd4af37, 0.75);
+
+    this.goldText = this.add
+      .text(706, 36, "", {
+        fontSize: "16px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(hudDepth + 1)
+      .setScrollFactor(0);
   }
 
   updateHUD() {
@@ -4839,12 +4879,16 @@ class ForestScene extends Phaser.Scene {
     const xp = Number(this.playerData.xp) || 0;
     const gold = Number(this.playerData.gold) || 0;
 
-    this.levelText.setText(`LVL ${level} — ${this.getLevelTitle(level)}`);
-    this.goldText.setText(`GOLD: ${gold}`);
-    this.xpText.setText(`XP ${xp} / ${this.xpNeeded}`);
+    this.levelText.setText(`LVL ${level}  •  ${this.getLevelTitle(level)}`);
+    this.goldText.setText(`GOLD  ${gold}`);
+    this.xpText.setText(`XP  ${xp} / ${this.xpNeeded}`);
 
     const percentage = Phaser.Math.Clamp(xp / this.xpNeeded, 0, 1);
-    this.xpBarFill.setDisplaySize(250 * percentage, 14);
+
+    this.xpBarFill.setDisplaySize(
+      Math.max(0, 246 * percentage),
+      8
+    );
   }
 }
 
