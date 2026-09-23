@@ -2,12 +2,12 @@ const quests = {
   basicIsim: {
     id: "basicIsim",
 
-    title: "Dasar-Dasar Isim",
+    title: "Ujian Nahwu Village",
 
     description:
-      "Selesaikan 3 tantangan tentang Isim.",
+      "Kalahkan 3 monster di Nahwu Village.",
 
-    type: "isim",
+    type: "monsterHunt",
 
     requiredProgress: 3,
 

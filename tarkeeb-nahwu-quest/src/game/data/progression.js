@@ -1,3 +1,16 @@
+// ============================================================
+// TARKEEB — GLOBAL PROGRESSION FOUNDATION
+// Step 2E.3
+//
+// Satu sumber state untuk progression seluruh dunia:
+// 1. Nahwu Village
+// 2. Forest of Isim
+// 3. Fi'il Desert
+// 4. Castle / Final Boss
+//
+// Registry Phaser dipakai untuk runtime sekarang.
+// Persistent save (localStorage / backend) akan ditambahkan pada Step 3D.
+// ============================================================
 
 export const AREA_KEYS = Object.freeze({
   VILLAGE: "nahwuVillage",
@@ -44,12 +57,13 @@ const createAreaState = (unlocked = false) => ({
   unlocked,
   questCompleted: false,
   defeatedMonsters: [],
+  openedChests: [],
   completed: false,
 });
 
 export function createDefaultGameProgress() {
   return {
-    version: 1,
+    version: 2,
     currentArea: AREA_KEYS.VILLAGE,
 
     nahwuVillage: createAreaState(true),
@@ -102,6 +116,9 @@ function normalizeAreaState(rawArea, defaultUnlocked) {
     defeatedMonsters:
       normalizeMonsterList(source.defeatedMonsters),
 
+    openedChests:
+      normalizeMonsterList(source.openedChests),
+
     completed:
       source.completed === true,
   };
@@ -115,7 +132,7 @@ export function normalizeGameProgress(rawProgress) {
       : {};
 
   const progress = {
-    version: 1,
+    version: 2,
 
     currentArea:
       AREA_CONFIG[source.currentArea]
@@ -158,6 +175,38 @@ export function normalizeGameProgress(rawProgress) {
 
   // Chapter pertama selalu dapat diakses.
   progress.nahwuVillage.unlocked = true;
+
+  // ==================================================
+  // STEP 2E.3 — PROGRESSION MIGRATION / AUTO-HEAL
+  // ==================================================
+  // Jika save/runtime lama sudah memenuhi requirement chapter tetapi
+  // flag completed/unlocked belum sempat tersimpan, perbaiki otomatis.
+  // Ini juga membuat struktur progression aman untuk chapter berikutnya.
+
+  const villageMonstersDone =
+    AREA_CONFIG.nahwuVillage.requiredMonsterIds.every(
+      (monsterId) =>
+        progress.nahwuVillage.defeatedMonsters.includes(monsterId)
+    );
+
+  if (
+    progress.nahwuVillage.questCompleted &&
+    villageMonstersDone
+  ) {
+    progress.nahwuVillage.completed = true;
+    progress.forest.unlocked = true;
+    progress.shop.tier = Math.max(progress.shop.tier, 2);
+  }
+
+  if (progress.forest.completed) {
+    progress.fiilDesert.unlocked = true;
+    progress.shop.tier = Math.max(progress.shop.tier, 3);
+  }
+
+  if (progress.fiilDesert.completed) {
+    progress.castle.unlocked = true;
+    progress.shop.tier = Math.max(progress.shop.tier, 4);
+  }
 
   return progress;
 }
@@ -249,6 +298,50 @@ export function markQuestCompleted(
   );
 }
 
+
+export function markChestOpened(
+  scene,
+  areaKey,
+  chestId
+) {
+  const progress = getGameProgress(scene);
+
+  if (
+    !AREA_CONFIG[areaKey] ||
+    !chestId
+  ) {
+    return progress;
+  }
+
+  const area = progress[areaKey];
+
+  area.openedChests = normalizeMonsterList([
+    ...area.openedChests,
+    chestId,
+  ]);
+
+  return saveGameProgress(
+    scene,
+    progress
+  );
+}
+
+export function isChestOpened(
+  progress,
+  areaKey,
+  chestId
+) {
+  const area = progress?.[areaKey];
+
+  if (!area || !chestId) {
+    return false;
+  }
+
+  return area.openedChests.includes(
+    chestId
+  );
+}
+
 export function setAreaUnlocked(
   scene,
   areaKey,
@@ -286,6 +379,52 @@ export function areRequiredMonstersDefeated(
         monsterId
       )
   );
+}
+
+export function getAreaRequirementStatus(
+  scene,
+  areaKey
+) {
+  const progress = getGameProgress(scene);
+  const config = AREA_CONFIG[areaKey];
+  const area = progress?.[areaKey];
+
+  if (!config || !area) {
+    return {
+      valid: false,
+      questCompleted: false,
+      defeatedCount: 0,
+      requiredCount: 0,
+      monstersCompleted: false,
+      completed: false,
+      nextArea: null,
+      nextAreaUnlocked: false,
+    };
+  }
+
+  const requiredIds = config.requiredMonsterIds || [];
+  const defeatedCount = requiredIds.filter(
+    (monsterId) => area.defeatedMonsters.includes(monsterId)
+  ).length;
+
+  const monstersCompleted =
+    defeatedCount >= requiredIds.length;
+
+  const nextArea = config.nextArea || null;
+
+  return {
+    valid: true,
+    questCompleted: area.questCompleted === true,
+    defeatedCount,
+    requiredCount: requiredIds.length,
+    monstersCompleted,
+    completed: area.completed === true,
+    nextArea,
+    nextAreaUnlocked:
+      nextArea && progress[nextArea]
+        ? progress[nextArea].unlocked === true
+        : false,
+  };
 }
 
 export function isAreaReadyToComplete(
@@ -326,7 +465,9 @@ export function completeAreaAndUnlockNext(
     progress[config.nextArea]
   ) {
     progress[config.nextArea].unlocked = true;
-    progress.currentArea = config.nextArea;
+
+    // currentArea tetap menunjuk area tempat player berada.
+    // Scene tujuan akan mengubah currentArea saat benar-benar dimasuki.
 
     // Shop tier mengikuti chapter yang sudah dibuka,
     // maksimal akan disempurnakan saat Step 2G.
@@ -340,6 +481,21 @@ export function completeAreaAndUnlockNext(
     scene,
     progress
   );
+}
+
+export function setCurrentArea(
+  scene,
+  areaKey
+) {
+  const progress = getGameProgress(scene);
+
+  if (!AREA_CONFIG[areaKey]) {
+    return progress;
+  }
+
+  progress.currentArea = areaKey;
+
+  return saveGameProgress(scene, progress);
 }
 
 export function resetGameProgress(scene) {

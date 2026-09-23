@@ -31,7 +31,16 @@ import monsters from "../data/monsters";
 import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
-import { getGameProgress } from "../data/progression";
+import {
+  getGameProgress,
+  markMonsterDefeated,
+  markQuestCompleted,
+  markChestOpened,
+  getAreaRequirementStatus,
+  isAreaReadyToComplete,
+  completeAreaAndUnlockNext,
+  setCurrentArea,
+} from "../data/progression";
 
 class VillageScene extends Phaser.Scene {
   constructor() {
@@ -126,13 +135,20 @@ class VillageScene extends Phaser.Scene {
     this.visualFoundation = new VisualFoundation(this);
 
     // ==================================================
-    // STEP 2E.1 — GLOBAL PROGRESSION FOUNDATION
+    // STEP 2E.2 — VILLAGE PROGRESSION + CHEST REDISTRIBUTION
     // ==================================================
     // Satu state progression dipakai untuk seluruh dunia Tarkeeb:
     // Nahwu Village -> Forest -> Fi'il Desert -> Castle.
     // Pada step ini kita baru menyiapkan fondasinya; requirement gate,
     // redistribusi chest, dan unlock chapter akan dipasang bertahap.
     this.gameProgress = getGameProgress(this);
+    this.gameProgress = setCurrentArea(
+      this,
+      "nahwuVillage"
+    );
+
+    // Banner unlock hanya muncul ketika Chapter 1 baru saja selesai.
+    this.pendingForestUnlockNotice = false;
 
     // ==================================================
     // PLAYER DATA
@@ -537,22 +553,13 @@ class VillageScene extends Phaser.Scene {
 
     this.chests = [];
 
+    // Step 2E.2 — Village hanya menyisakan satu chest tutorial.
+    // Dua equipment yang lebih kuat dipindahkan ke Forest.
     this.createChest(
-      560,
-      410,
-      items.swordOfIsim
-    );
-
-    this.createChest(
-      288,
-      505,
-      items.shieldOfMubtada
-    );
-
-    this.createChest(
-      657,
-      385,
-      items.ringOfRafa
+      285,
+      500,
+      items.swordOfIsim,
+      "village_sword_chest"
     );
 
     // ==================================================
@@ -565,42 +572,57 @@ class VillageScene extends Phaser.Scene {
     // NAHWU SLIME
     // --------------------------------------------------
 
-    const slime =
-      new Monster(
+    const defeatedVillageMonsters =
+      this.gameProgress?.nahwuVillage?.defeatedMonsters || [];
+
+    const spawnVillageMonster = (
+      x,
+      y,
+      monsterData
+    ) => {
+      if (
+        defeatedVillageMonsters.includes(
+          monsterData.id
+        )
+      ) {
+        return null;
+      }
+
+      const monster = new Monster(
         this,
-        635,
-        500,
-        monsters.nahwuSlime
+        x,
+        y,
+        monsterData
       );
+
+      this.monsters.push(monster);
+      return monster;
+    };
+
+    spawnVillageMonster(
+      635,
+      500,
+      monsters.nahwuSlime
+    );
 
     // --------------------------------------------------
     // GRAMMAR GOBLIN
     // --------------------------------------------------
 
-    const goblin =
-      new Monster(
-        this,
-        165,
-        485,
-        monsters.grammarGoblin
-      );
+    spawnVillageMonster(
+      165,
+      485,
+      monsters.grammarGoblin
+    );
 
     // --------------------------------------------------
     // I'RAB GOLEM
     // --------------------------------------------------
 
-    const golem =
-      new Monster(
-        this,
-        555,
-        165,
-        monsters.irabGolem
-      );
-
-    this.monsters.push(
-      slime,
-      goblin,
-      golem
+    spawnVillageMonster(
+      555,
+      165,
+      monsters.irabGolem
     );
 
     // ==================================================
@@ -1179,12 +1201,13 @@ class VillageScene extends Phaser.Scene {
     }
 
     // ==================================================
-    // FOREST GATE
+    // FOREST GATE — STEP 2E.3 LOCK / UNLOCK
     // ==================================================
 
-    if (
-      this.forestGate
-    ) {
+    if (this.forestGate) {
+      const gateStatus =
+        this.refreshForestGateState();
+
       const gateDistance =
         Phaser.Math.Distance.Between(
           this.player.x,
@@ -1193,21 +1216,16 @@ class VillageScene extends Phaser.Scene {
           this.forestGate.y
         );
 
-      if (
-        gateDistance < 90
-      ) {
+      if (gateDistance < 90) {
         // Prompt floating lama tidak dipakai lagi;
         // semua interaksi memakai panel global yang konsisten.
         this.forestGatePrompt.setVisible(false);
 
         this.showInteractionPrompt(
-          "Masuk Forest of Isim"
+          gateStatus.prompt
         );
-
       } else {
-        this.forestGatePrompt.setVisible(
-          false
-        );
+        this.forestGatePrompt.setVisible(false);
       }
     }
 
@@ -1226,6 +1244,36 @@ class VillageScene extends Phaser.Scene {
       this.npcDialogOpen ||
       this.questCompleteOpen
     ) {
+      return;
+    }
+
+    // Forest hanya dapat dimasuki setelah Chapter 1 benar-benar selesai.
+    const gateStatus =
+      this.refreshForestGateState();
+
+    if (!gateStatus.unlocked) {
+      this.showInteractionPrompt(
+        gateStatus.prompt
+      );
+
+      // Feedback kecil ketika mencoba membuka gate yang masih terkunci.
+      this.tweens.killTweensOf(
+        this.forestGate
+      );
+
+      this.tweens.add({
+        targets: this.forestGate,
+        x: { from: 397, to: 403 },
+        duration: 55,
+        yoyo: true,
+        repeat: 3,
+        onComplete: () => {
+          if (this.forestGate) {
+            this.forestGate.x = 400;
+          }
+        },
+      });
+
       return;
     }
 
@@ -1339,6 +1387,97 @@ class VillageScene extends Phaser.Scene {
     this.forestGatePrompt.setVisible(
       false
     );
+
+    this.refreshForestGateState();
+  }
+
+  // ==================================================
+  // FOREST GATE PROGRESSION STATE
+  // ==================================================
+
+  getForestGateStatus() {
+    this.gameProgress = getGameProgress(this);
+
+    const status = getAreaRequirementStatus(
+      this,
+      "nahwuVillage"
+    );
+
+    const forestUnlocked =
+      this.gameProgress?.forest?.unlocked === true;
+
+    if (forestUnlocked) {
+      return {
+        unlocked: true,
+        title: "🌳 FOREST",
+        prompt: "Masuk Forest of Isim",
+      };
+    }
+
+    // Belum mengambil / menyelesaikan quest utama Village.
+    if (
+      !status.questCompleted &&
+      status.defeatedCount === 0 &&
+      !this.activeQuest
+    ) {
+      return {
+        unlocked: false,
+        title: "🔒 FOREST",
+        prompt: "Forest terkunci • Ambil quest Grammar Master",
+      };
+    }
+
+    // Selama quest berjalan, tampilkan progres monster langsung di gate.
+    if (!status.monstersCompleted) {
+      return {
+        unlocked: false,
+        title: "🔒 FOREST",
+        prompt:
+          `Forest terkunci • Monster ${status.defeatedCount}/${status.requiredCount}`,
+      };
+    }
+
+    // Safety case: semua monster sudah kalah tetapi quest belum diselesaikan.
+    if (!status.questCompleted) {
+      return {
+        unlocked: false,
+        title: "🔒 FOREST",
+        prompt: "Forest terkunci • Selesaikan quest Grammar Master",
+      };
+    }
+
+    return {
+      unlocked: false,
+      title: "🔒 FOREST",
+      prompt: "Forest terkunci • Selesaikan Chapter 1",
+    };
+  }
+
+  refreshForestGateState() {
+    const status =
+      this.getForestGateStatus();
+
+    if (this.forestGate) {
+      if (status.unlocked) {
+        this.forestGate.clearTint();
+      } else {
+        this.forestGate.setTint(0x8a929c);
+      }
+    }
+
+    if (this.forestGateText) {
+      this.forestGateText.setText(
+        status.title
+      );
+
+      this.forestGateText.setBackgroundColor(
+        status.unlocked
+          ? "#1A365D"
+          : "#4A2630"
+      );
+    }
+
+    return status;
   }
 
   // ==================================================
@@ -4123,6 +4262,18 @@ class VillageScene extends Phaser.Scene {
         // DESTROY MONSTER
         // ==================================================
 
+        // Simpan progress monster Chapter 1 sebelum object dihancurkan.
+        this.gameProgress = markMonsterDefeated(
+          this,
+          "nahwuVillage",
+          monster.id
+        );
+
+        // Quest Grammar Master mengikuti jumlah monster unik
+        // yang sudah dikalahkan, bukan chest/quiz.
+        this.pendingQuestCompletion =
+          this.syncVillageMonsterQuestProgress();
+
         monster.destroy();
 
         // ==================================================
@@ -4444,6 +4595,16 @@ class VillageScene extends Phaser.Scene {
           null;
 
         this.hideInteractionPrompt();
+
+        // Jika monster terakhir menyelesaikan quest Grammar Master,
+        // tampilkan reward quest setelah layar Victory ditutup.
+        if (
+          this.pendingQuestCompletion
+        ) {
+          this.pendingQuestCompletion = false;
+          this.completeQuest();
+          return;
+        }
 
         // Battle selesai. Kembalikan HUD eksplorasi.
         this.setGameplayHUDVisible(true);
@@ -5450,12 +5611,19 @@ class VillageScene extends Phaser.Scene {
   createChest(
     x,
     y,
-    reward
+    reward,
+    chestId
   ) {
+    const openedChests =
+      this.gameProgress?.nahwuVillage?.openedChests || [];
+
     const chest = {
+      id: chestId,
       x,
       y,
-      opened: false,
+      opened:
+        Boolean(chestId) &&
+        openedChests.includes(chestId),
       isNearby: false,
 
       reward,
@@ -5469,7 +5637,9 @@ class VillageScene extends Phaser.Scene {
       this.add.image(
         x,
         y,
-        "chestClosedPixel"
+        chest.opened
+          ? "chestOpenPixel"
+          : "chestClosedPixel"
       );
 
     chest.body
@@ -5484,7 +5654,9 @@ class VillageScene extends Phaser.Scene {
         .text(
           x,
           y + 42,
-          "CHEST",
+          chest.opened
+            ? "OPENED!"
+            : "CHEST",
           {
             fontSize: "11px",
             color: "#F6E3A1",
@@ -5500,9 +5672,11 @@ class VillageScene extends Phaser.Scene {
       chest
     );
 
-    this.visualFoundation.animateChest(
-      chest
-    );
+    if (!chest.opened) {
+      this.visualFoundation.animateChest(
+        chest
+      );
+    }
   }
 
   // ==================================================
@@ -5840,6 +6014,14 @@ class VillageScene extends Phaser.Scene {
       this.currentChest.opened =
         true;
 
+      if (this.currentChest.id) {
+        this.gameProgress = markChestOpened(
+          this,
+          "nahwuVillage",
+          this.currentChest.id
+        );
+      }
+
       if (
         this.currentChest.body &&
         this.currentChest.body.active
@@ -5849,8 +6031,8 @@ class VillageScene extends Phaser.Scene {
         );
 
         this.currentChest.body.setDisplaySize(
-          54,
-          48
+          70,
+          62
         );
       }
 
@@ -5859,13 +6041,12 @@ class VillageScene extends Phaser.Scene {
       );
     }
 
-    const questCompleted =
-      this.updateQuestProgress(
-        questionType
-      );
+    // Step 2E.2B — Chest tidak lagi menjadi syarat quest Village.
+    // Quest Grammar Master sekarang murni meminta pemain
+    // mengalahkan 3 monster utama Nahwu Village.
+    const questCompleted = false;
 
-    this.pendingQuestCompletion =
-      questCompleted;
+    this.pendingQuestCompletion = false;
 
     let message =
       `+${xpResult.finalXP} XP`;
@@ -6556,7 +6737,17 @@ class VillageScene extends Phaser.Scene {
       this.activeQuest
     );
 
+    // Jika pemain sudah mengalahkan monster sebelum menerima quest,
+    // progress tersebut tetap dihitung agar tidak perlu respawn/grind ulang.
+    const alreadyComplete =
+      this.syncVillageMonsterQuestProgress();
+
     this.closeNPCDialog();
+
+    if (alreadyComplete) {
+      this.completeQuest();
+      return;
+    }
 
     this.showQuestHUD();
   }
@@ -6697,8 +6888,57 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
+  // SYNC VILLAGE MONSTER QUEST
+  // ==================================================
+
+  syncVillageMonsterQuestProgress() {
+    if (
+      !this.activeQuest ||
+      this.activeQuest.type !== "monsterHunt"
+    ) {
+      return false;
+    }
+
+    const requiredMonsterIds = [
+      "nahwuSlime",
+      "grammarGoblin",
+      "irabGolem",
+    ];
+
+    const defeatedMonsters =
+      this.gameProgress?.nahwuVillage?.defeatedMonsters || [];
+
+    const defeatedRequired =
+      requiredMonsterIds.filter((monsterId) =>
+        defeatedMonsters.includes(monsterId)
+      ).length;
+
+    this.activeQuest.requiredProgress =
+      requiredMonsterIds.length;
+
+    this.activeQuest.progress =
+      Math.min(
+        defeatedRequired,
+        this.activeQuest.requiredProgress
+      );
+
+    this.registry.set(
+      "activeQuest",
+      this.activeQuest
+    );
+
+    this.showQuestHUD();
+
+    return (
+      this.activeQuest.progress >=
+      this.activeQuest.requiredProgress
+    );
+  }
+
+  // ==================================================
   // UPDATE QUEST PROGRESS
   // ==================================================
+  // Dipertahankan untuk quest tipe lain di chapter berikutnya.
 
   updateQuestProgress(
     type
@@ -6763,6 +7003,40 @@ class VillageScene extends Phaser.Scene {
 
     const completedQuest =
       this.activeQuest;
+
+    // Simpan status quest Chapter 1 ke global progression.
+    const forestWasUnlocked =
+      this.gameProgress?.forest?.unlocked === true;
+
+    this.gameProgress = markQuestCompleted(
+      this,
+      "nahwuVillage",
+      true
+    );
+
+    // Requirement Chapter 1: quest selesai + semua monster wajib kalah.
+    // Quest Village memang meminta 3 monster, tetapi pengecekan ganda ini
+    // menjaga progression tetap aman jika quest diubah lagi nanti.
+    if (
+      isAreaReadyToComplete(
+        this,
+        "nahwuVillage"
+      )
+    ) {
+      this.gameProgress = completeAreaAndUnlockNext(
+        this,
+        "nahwuVillage"
+      );
+    }
+
+    const forestNowUnlocked =
+      this.gameProgress?.forest?.unlocked === true;
+
+    this.pendingForestUnlockNotice =
+      !forestWasUnlocked &&
+      forestNowUnlocked;
+
+    this.refreshForestGateState();
 
     const reward =
       completedQuest.reward;
@@ -7005,6 +7279,90 @@ class VillageScene extends Phaser.Scene {
 
       this.updateHUD();
       this.setGameplayHUDVisible(true);
+      this.refreshForestGateState();
+
+      if (this.pendingForestUnlockNotice) {
+        this.pendingForestUnlockNotice = false;
+        this.showForestUnlockedNotice();
+      }
+    });
+  }
+
+  // ==================================================
+  // FOREST UNLOCK BANNER
+  // ==================================================
+
+  showForestUnlockedNotice() {
+    const banner = this.add
+      .container(400, 175)
+      .setDepth(1800)
+      .setScrollFactor(0);
+
+    const panel = this.add
+      .rectangle(0, 0, 430, 104, 0x0b1f24, 0.98)
+      .setStrokeStyle(3, 0x62d98b, 1);
+
+    const chapter = this.add
+      .text(0, -25, "CHAPTER I COMPLETE", {
+        fontSize: "13px",
+        color: "#8EF0AD",
+        fontStyle: "bold",
+        letterSpacing: 2,
+      })
+      .setOrigin(0.5);
+
+    const title = this.add
+      .text(0, 6, "FOREST OF ISIM UNLOCKED", {
+        fontSize: "23px",
+        color: "#FFF4C2",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5);
+
+    const hint = this.add
+      .text(0, 34, "Gate Forest sekarang dapat dimasuki.", {
+        fontSize: "13px",
+        color: "#D9F8E3",
+      })
+      .setOrigin(0.5);
+
+    banner.add([
+      panel,
+      chapter,
+      title,
+      hint,
+    ]);
+
+    banner.setAlpha(0);
+    banner.setScale(0.96);
+
+    this.tweens.add({
+      targets: banner,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 220,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.time.delayedCall(2200, () => {
+          if (!banner.active) {
+            return;
+          }
+
+          this.tweens.add({
+            targets: banner,
+            alpha: 0,
+            y: 160,
+            duration: 260,
+            ease: "Quad.easeIn",
+            onComplete: () => {
+              banner.destroy();
+            },
+          });
+        });
+      },
     });
   }
 

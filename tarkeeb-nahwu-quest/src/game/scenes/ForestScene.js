@@ -9,6 +9,8 @@ import nahwuSlimeAsset from "../../assets/monsters/nahwu_slime.png";
 import grammarGoblinAsset from "../../assets/monsters/grammar_goblin.png";
 import irabGolemAsset from "../../assets/monsters/irab_golem.png";
 
+import chestClosedAsset from "../../assets/objects/chest_closed.png";
+import chestOpenAsset from "../../assets/objects/chest_open.png";
 import treeAsset from "../../assets/objects/tree_01.png";
 import forestGateAsset from "../../assets/objects/forest_gate.png";
 import grassTileAsset from "../../assets/tiles/grass_tile.png";
@@ -16,11 +18,17 @@ import pathTileAsset from "../../assets/tiles/path_tile.png";
 
 import Monster from "../objects/Monster";
 
+import questions from "../data/questions";
+import items from "../data/items";
 import monsters from "../data/monsters";
 import battleQuestions from "../data/battleQuestions";
 import skills from "../data/skills";
 import skillQuestions from "../data/skillQuestions";
-import { getGameProgress } from "../data/progression";
+import {
+  getGameProgress,
+  markChestOpened,
+  setCurrentArea,
+} from "../data/progression";
 
 class ForestScene extends Phaser.Scene {
   constructor() {
@@ -64,6 +72,16 @@ class ForestScene extends Phaser.Scene {
     );
 
     this.load.image(
+      "chestClosedPixel",
+      chestClosedAsset
+    );
+
+    this.load.image(
+      "chestOpenPixel",
+      chestOpenAsset
+    );
+
+    this.load.image(
       "treePixel",
       treeAsset
     );
@@ -93,11 +111,24 @@ class ForestScene extends Phaser.Scene {
       new VisualFoundation(this);
 
     // ==================================================
-    // STEP 2E.1 — GLOBAL PROGRESSION FOUNDATION
+    // STEP 2E.2 — FOREST CHESTS + GLOBAL PROGRESSION
     // ==================================================
     // Forest memakai state progression yang sama dengan Village, Desert,
     // dan Castle. Ini mencegah logic unlock tiap map dibuat terpisah.
     this.gameProgress = getGameProgress(this);
+
+    // Safety guard: Forest tidak boleh dapat diakses sebelum Chapter 1 selesai.
+    // Normal gameplay tetap masuk lewat gate Village; guard ini mencegah
+    // akses langsung ke scene dari debug / state lama.
+    if (this.gameProgress?.forest?.unlocked !== true) {
+      this.scene.start("VillageScene");
+      return;
+    }
+
+    this.gameProgress = setCurrentArea(
+      this,
+      "forest"
+    );
 
     let savedData = this.registry.get("playerData");
 
@@ -135,6 +166,13 @@ class ForestScene extends Phaser.Scene {
     // ==================================================
 
     this.isTransitioning = false;
+
+    // Forest chest quiz state.
+    this.isQuizOpen = false;
+    this.chestAnswerLocked = false;
+    this.quizObjects = [];
+    this.currentChest = null;
+    this.currentQuestion = null;
 
     this.isBattleOpen = false;
     this.isBattleQuestionOpen = false;
@@ -176,6 +214,10 @@ class ForestScene extends Phaser.Scene {
     this.forestQuestCompleteOpen = false;
     this.forestQuestCompleteObjects = [];
     this.pendingForestQuestCompletion = null;
+
+    // Inventory tersedia lintas map.
+    this.inventoryOpen = false;
+    this.inventoryObjects = [];
 
     this.xpNeeded = 200;
 
@@ -328,6 +370,28 @@ class ForestScene extends Phaser.Scene {
     this.createBush(500, 500);
 
     // ==================================================
+    // FOREST CHESTS — STEP 2E.2
+    // ==================================================
+    // Shield dan Ring dipindahkan dari Village agar reward terasa
+    // mengikuti progression area.
+
+    this.chests = [];
+
+    this.createForestChest(
+      310,
+      410,
+      items.shieldOfMubtada,
+      "forest_shield_chest"
+    );
+
+    this.createForestChest(
+      510,
+      410,
+      items.ringOfRafa,
+      "forest_ring_chest"
+    );
+
+    // ==================================================
     // FOREST MONSTERS
     // ==================================================
 
@@ -429,6 +493,10 @@ class ForestScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
 
+    this.inventoryKey = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.I
+    );
+
     this.playerLabel = this.add
       .text(
         this.player.x,
@@ -504,6 +572,8 @@ class ForestScene extends Phaser.Scene {
     if (
       this.forestQuestDialogOpen ||
       this.forestQuestCompleteOpen ||
+      this.inventoryOpen ||
+      this.isQuizOpen ||
       this.isBattleOpen ||
       this.isBattleQuestionOpen ||
       this.skillQuestionOpen ||
@@ -1238,10 +1308,40 @@ class ForestScene extends Phaser.Scene {
       return;
     }
 
+    // ==================================================
+    // INVENTORY KEY
+    // ==================================================
+
+    if (
+      this.inventoryKey &&
+      Phaser.Input.Keyboard.JustDown(this.inventoryKey)
+    ) {
+      if (this.inventoryOpen) {
+        this.closeInventory();
+        return;
+      }
+
+      if (
+        !this.forestQuestDialogOpen &&
+        !this.forestQuestCompleteOpen &&
+        !this.isQuizOpen &&
+        !this.isBattleOpen &&
+        !this.isBattleQuestionOpen &&
+        !this.skillQuestionOpen &&
+        !this.skillMenuOpen
+      ) {
+        this.showInventory();
+      }
+
+      return;
+    }
+
     // Pause movement dan sembunyikan prompt selama UI modal terbuka.
     if (
       this.forestQuestDialogOpen ||
       this.forestQuestCompleteOpen ||
+      this.inventoryOpen ||
+      this.isQuizOpen ||
       this.isBattleOpen ||
       this.isBattleQuestionOpen ||
       this.skillQuestionOpen ||
@@ -1329,9 +1429,74 @@ class ForestScene extends Phaser.Scene {
       }
     }
 
+    // ==================================================
+    // FOREST CHEST INTERACTION
+    // ==================================================
+
+    let nearestChest = null;
+    let nearestChestDistance = Infinity;
+
+    this.chests.forEach((chest) => {
+      if (!chest || chest.opened) {
+        return;
+      }
+
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        chest.x,
+        chest.y
+      );
+
+      if (distance < nearestChestDistance) {
+        nearestChest = chest;
+        nearestChestDistance = distance;
+      }
+    });
+
+    this.chests.forEach((chest) => {
+      const nearby =
+        chest === nearestChest &&
+        nearestChestDistance < 80 &&
+        !chest.opened;
+
+      this.visualFoundation.setChestNearby(
+        chest,
+        nearby
+      );
+    });
+
+    if (
+      nearestChest &&
+      nearestChestDistance < 80
+    ) {
+      this.showInteractionPrompt(
+        "Buka Forest Chest"
+      );
+
+      if (
+        Phaser.Input.Keyboard.JustDown(
+          this.interactKey
+        )
+      ) {
+        this.openForestChest(
+          nearestChest
+        );
+        return;
+      }
+    }
+
     const nearestMonster = this.getNearestMonster();
 
-    if (nearestMonster && nearestMonster.isNearby && !nearestMonster.isDead()) {
+    if (
+      nearestMonster &&
+      nearestMonster.isNearby &&
+      !nearestMonster.isDead() &&
+      (
+        !nearestChest ||
+        nearestChestDistance >= 80
+      )
+    ) {
       this.showInteractionPrompt(
         `Lawan ${nearestMonster.name}`
       );
@@ -1403,6 +1568,541 @@ class ForestScene extends Phaser.Scene {
         );
       },
     });
+  }
+
+  // ==================================================
+  // CREATE FOREST CHEST
+  // ==================================================
+
+  createForestChest(
+    x,
+    y,
+    reward,
+    chestId
+  ) {
+    const openedChests =
+      this.gameProgress?.forest?.openedChests || [];
+
+    const chest = {
+      id: chestId,
+      x,
+      y,
+      reward,
+      opened:
+        Boolean(chestId) &&
+        openedChests.includes(chestId),
+      isNearby: false,
+      body: null,
+      lid: null,
+      label: null,
+    };
+
+    chest.body = this.add.image(
+      x,
+      y,
+      chest.opened
+        ? "chestOpenPixel"
+        : "chestClosedPixel"
+    );
+
+    chest.body
+      .setDisplaySize(70, 62)
+      .setDepth(20);
+
+    chest.label = this.add
+      .text(
+        x,
+        y + 42,
+        chest.opened
+          ? "OPENED!"
+          : "FOREST CHEST",
+        {
+          fontSize: "10px",
+          color: "#E8F8D8",
+          fontStyle: "bold",
+          stroke: "#17351F",
+          strokeThickness: 3,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(21);
+
+    this.chests.push(chest);
+
+    if (!chest.opened) {
+      this.visualFoundation.animateChest(
+        chest
+      );
+    }
+  }
+
+  // ==================================================
+  // OPEN FOREST CHEST
+  // ==================================================
+
+  openForestChest(chest) {
+    if (!chest || chest.opened) {
+      return;
+    }
+
+    this.currentChest = chest;
+    this.currentQuestion =
+      this.getForestChestQuestion();
+
+    if (!this.currentQuestion) {
+      return;
+    }
+
+    this.isQuizOpen = true;
+    this.chestAnswerLocked = false;
+
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
+
+    if (
+      this.player &&
+      this.player.body
+    ) {
+      this.player.body.setVelocity(0, 0);
+    }
+
+    this.showForestChestQuiz();
+  }
+
+  getForestChestQuestion() {
+    const available = questions.filter(
+      (question) =>
+        question.type === "isim"
+    );
+
+    if (available.length === 0) {
+      return null;
+    }
+
+    return available[
+      Phaser.Math.Between(
+        0,
+        available.length - 1
+      )
+    ];
+  }
+
+  // ==================================================
+  // FOREST CHEST QUIZ UI
+  // ==================================================
+
+  showForestChestQuiz() {
+    this.clearForestChestQuiz();
+    this.quizObjects = [];
+
+    const depth = 5200;
+
+    const overlay = this.add
+      .rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x030a08,
+        0.82
+      )
+      .setDepth(depth);
+
+    const panel = this.add
+      .rectangle(
+        400,
+        300,
+        650,
+        450,
+        0x10261b,
+        0.99
+      )
+      .setDepth(depth + 1)
+      .setStrokeStyle(
+        3,
+        0xd4af37,
+        0.95
+      );
+
+    const title = this.add
+      .text(
+        400,
+        105,
+        "FOREST CHEST CHALLENGE",
+        {
+          fontSize: "25px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          stroke: "#07110A",
+          strokeThickness: 4,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+
+    const difficulty = this.add
+      .text(
+        400,
+        142,
+        `Difficulty: ${this.currentQuestion.difficulty.toUpperCase()}`,
+        {
+          fontSize: "13px",
+          color: "#A9D6A3",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+
+    const question = this.add
+      .text(
+        400,
+        200,
+        this.currentQuestion.question,
+        {
+          fontSize: "19px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+          align: "center",
+          wordWrap: {
+            width: 540,
+          },
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+
+    this.quizObjects.push(
+      overlay,
+      panel,
+      title,
+      difficulty,
+      question
+    );
+
+    this.currentQuestion.answers.forEach(
+      (answer, index) => {
+        const y = 282 + index * 55;
+
+        const button = this.add
+          .rectangle(
+            400,
+            y,
+            500,
+            42,
+            0x183929,
+            1
+          )
+          .setDepth(depth + 2)
+          .setStrokeStyle(
+            1,
+            0x6b9f70,
+            0.9
+          )
+          .setInteractive({
+            useHandCursor: true,
+          });
+
+        const text = this.add
+          .text(
+            400,
+            y,
+            answer.text,
+            {
+              fontSize: "17px",
+              color: "#F2FFF0",
+              fontStyle: "bold",
+            }
+          )
+          .setOrigin(0.5)
+          .setDepth(depth + 3);
+
+        button.on(
+          "pointerover",
+          () => {
+            if (this.chestAnswerLocked) {
+              return;
+            }
+
+            button.setFillStyle(
+              0x2f6b48
+            );
+          }
+        );
+
+        button.on(
+          "pointerout",
+          () => {
+            if (this.chestAnswerLocked) {
+              return;
+            }
+
+            button.setFillStyle(
+              0x183929
+            );
+          }
+        );
+
+        button.on(
+          "pointerdown",
+          () => {
+            if (this.chestAnswerLocked) {
+              return;
+            }
+
+            this.chestAnswerLocked = true;
+            this.answerForestChestQuiz(
+              answer.correct
+            );
+          }
+        );
+
+        this.quizObjects.push(
+          button,
+          text
+        );
+      }
+    );
+  }
+
+  answerForestChestQuiz(isCorrect) {
+    if (!isCorrect) {
+      this.showForestChestResult(
+        "BELUM TEPAT",
+        "Jawabanmu belum benar.\nKamu bisa mencoba chest ini lagi.",
+        false
+      );
+      return;
+    }
+
+    const questionType =
+      this.currentQuestion?.type ||
+      "isim";
+
+    const xpResult = this.addXP(
+      125,
+      questionType
+    );
+
+    this.playerData.gold =
+      Number(this.playerData.gold) +
+      75;
+
+    if (
+      this.currentChest &&
+      this.currentChest.reward
+    ) {
+      const rewardItem = {
+        ...this.currentChest.reward,
+      };
+
+      const alreadyOwned =
+        this.playerData.inventory.some(
+          (item) =>
+            item &&
+            item.id === rewardItem.id
+        );
+
+      if (!alreadyOwned) {
+        this.playerData.inventory.push(
+          rewardItem
+        );
+      }
+    }
+
+    if (this.currentChest) {
+      this.currentChest.opened = true;
+
+      if (this.currentChest.id) {
+        this.gameProgress = markChestOpened(
+          this,
+          "forest",
+          this.currentChest.id
+        );
+      }
+
+      if (
+        this.currentChest.body &&
+        this.currentChest.body.active
+      ) {
+        this.currentChest.body
+          .setTexture("chestOpenPixel")
+          .setDisplaySize(70, 62);
+      }
+
+      if (this.currentChest.label) {
+        this.currentChest.label.setText(
+          "OPENED!"
+        );
+      }
+    }
+
+    this.registry.set(
+      "playerData",
+      this.playerData
+    );
+
+    this.updateHUD();
+
+    let message =
+      `+${xpResult.finalXP} XP\n` +
+      `+75 GOLD`;
+
+    if (
+      this.currentChest?.reward
+    ) {
+      message +=
+        `\n${this.currentChest.reward.icon} ` +
+        `${this.currentChest.reward.name}`;
+    }
+
+    if (xpResult.leveledUp) {
+      message += "\n\nLEVEL UP!";
+    }
+
+    this.showForestChestResult(
+      "CHEST TERBUKA!",
+      message,
+      true
+    );
+  }
+
+  showForestChestResult(
+    titleText,
+    messageText,
+    success
+  ) {
+    this.clearForestChestQuiz();
+
+    const depth = 5300;
+
+    const overlay = this.add
+      .rectangle(
+        400,
+        300,
+        800,
+        600,
+        0x030a08,
+        0.84
+      )
+      .setDepth(depth);
+
+    const panel = this.add
+      .rectangle(
+        400,
+        300,
+        520,
+        320,
+        0x10261b,
+        0.99
+      )
+      .setDepth(depth + 1)
+      .setStrokeStyle(
+        3,
+        success
+          ? 0xd4af37
+          : 0xa85a5a,
+        0.95
+      );
+
+    const title = this.add
+      .text(
+        400,
+        205,
+        titleText,
+        {
+          fontSize: "30px",
+          color: success
+            ? "#FFE58A"
+            : "#FFB4B4",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+
+    const message = this.add
+      .text(
+        400,
+        292,
+        messageText,
+        {
+          fontSize: "18px",
+          color: "#F4FFF2",
+          align: "center",
+          wordWrap: {
+            width: 430,
+          },
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+
+    const button = this.add
+      .rectangle(
+        400,
+        400,
+        190,
+        48,
+        0xd4af37,
+        1
+      )
+      .setDepth(depth + 2)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    const buttonText = this.add
+      .text(
+        400,
+        400,
+        "LANJUT",
+        {
+          fontSize: "17px",
+          color: "#10261B",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 3);
+
+    button.on(
+      "pointerdown",
+      () => {
+        [
+          overlay,
+          panel,
+          title,
+          message,
+          button,
+          buttonText,
+        ].forEach((object) => {
+          if (object) {
+            object.destroy();
+          }
+        });
+
+        this.isQuizOpen = false;
+        this.chestAnswerLocked = false;
+        this.currentQuestion = null;
+        this.currentChest = null;
+
+        this.updateHUD();
+        this.setGameplayHUDVisible(true);
+      }
+    );
+  }
+
+  clearForestChestQuiz() {
+    this.quizObjects.forEach(
+      (object) => {
+        if (object) {
+          object.destroy();
+        }
+      }
+    );
+
+    this.quizObjects = [];
   }
 
   // ==================================================
@@ -5151,6 +5851,588 @@ class ForestScene extends Phaser.Scene {
       this.player.setFrame(0);
     }
   }
+
+  // ==================================================
+  // EQUIP ITEM
+  // ==================================================
+
+  equipItem(
+    index
+  ) {
+    const item =
+      this.playerData.inventory[
+        index
+      ];
+
+    if (!item) {
+      return;
+    }
+
+    const type =
+      item.type;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        this.playerData.equipped,
+        type
+      )
+    ) {
+      return;
+    }
+
+    this.playerData.equipped[
+      type
+    ] = item.id;
+
+    this.registry.set(
+      "playerData",
+      this.playerData
+    );
+
+    this.closeInventory();
+
+    this.showInventory();
+  }
+
+  // ==================================================
+  // UNEQUIP ITEM
+  // ==================================================
+
+  unequipItem(
+    item
+  ) {
+    if (!item) {
+      return;
+    }
+
+    const type =
+      item.type;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        this.playerData.equipped,
+        type
+      )
+    ) {
+      return;
+    }
+
+    if (
+      this.playerData.equipped[
+        type
+      ] === item.id
+    ) {
+      this.playerData.equipped[
+        type
+      ] = null;
+    }
+
+    this.registry.set(
+      "playerData",
+      this.playerData
+    );
+
+    this.closeInventory();
+
+    this.showInventory();
+  }
+
+  // ==================================================
+  // CHECK EQUIPPED
+  // ==================================================
+
+  isItemEquipped(
+    item
+  ) {
+    if (!item) {
+      return false;
+    }
+
+    return (
+      this.playerData.equipped[
+        item.type
+      ] === item.id
+    );
+  }
+
+  // ==================================================
+  // RARITY COLOR
+  // ==================================================
+
+  getRarityColor(
+    rarity
+  ) {
+    switch (
+      String(
+        rarity
+      ).toLowerCase()
+    ) {
+      case "common":
+        return "#718096";
+
+      case "rare":
+        return "#3182CE";
+
+      case "epic":
+        return "#805AD5";
+
+      case "legendary":
+        return "#D69E2E";
+
+      default:
+        return "#718096";
+    }
+  }
+
+  // ==================================================
+  // TOGGLE INVENTORY
+  // ==================================================
+
+  toggleInventory() {
+    if (
+      this.inventoryOpen
+    ) {
+      this.closeInventory();
+    } else {
+      this.showInventory();
+    }
+  }
+
+  // ==================================================
+  // SHOW INVENTORY — STEP 2D.7 RPG INVENTORY
+  // ==================================================
+
+  showInventory() {
+    this.inventoryOpen = true;
+    this.inventoryObjects = [];
+
+    // Inventory adalah layar fokus penuh.
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
+
+    const depth = 3000;
+
+    const addObject = (object) => {
+      if (object) {
+        object.setScrollFactor?.(0);
+        this.inventoryObjects.push(object);
+      }
+      return object;
+    };
+
+    // --------------------------------------------------
+    // OVERLAY + MAIN PANEL
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .rectangle(400, 300, 800, 600, 0x050b14, 0.82)
+        .setDepth(depth)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 300, 720, 520, 0x0d1b2f, 0.98)
+        .setDepth(depth + 1)
+        .setStrokeStyle(3, 0xd4af37, 0.95)
+    );
+
+    // --------------------------------------------------
+    // HEADER
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(75, 58, "INVENTORY", {
+          fontSize: "28px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          stroke: "#07111F",
+          strokeThickness: 3,
+        })
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(75, 91, "Perlengkapan Petualang Nahwu", {
+          fontSize: "12px",
+          color: "#9FB6D6",
+        })
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(
+          725,
+          67,
+          `LVL ${this.playerData.level}   •   XP ${this.playerData.xp}   •   GOLD ${this.playerData.gold}`,
+          {
+            fontSize: "13px",
+            color: "#FFFFFF",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(1, 0.5)
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 117, 650, 2, 0x31577d, 0.9)
+        .setDepth(depth + 2)
+    );
+
+    // --------------------------------------------------
+    // LEFT: EQUIPMENT
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(92, 138, "EQUIPMENT", {
+          fontSize: "15px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 2)
+    );
+
+    const equipmentTypes = [
+      { type: "Weapon", label: "WEAPON", fallback: "🗡️" },
+      { type: "Armor", label: "ARMOR", fallback: "🛡️" },
+      { type: "Accessory", label: "ACCESSORY", fallback: "💍" },
+    ];
+
+    equipmentTypes.forEach((slot, index) => {
+      const y = 190 + index * 92;
+      const equippedId = this.playerData.equipped?.[slot.type];
+      const equippedItem = this.playerData.inventory.find(
+        (item) => item && item.id === equippedId
+      );
+
+      addObject(
+        this.add
+          .rectangle(180, y, 210, 74, 0x132844, 1)
+          .setDepth(depth + 2)
+          .setStrokeStyle(
+            2,
+            equippedItem ? 0xd4af37 : 0x31577d,
+            equippedItem ? 0.9 : 0.7
+          )
+      );
+
+      addObject(
+        this.add
+          .text(94, y - 26, slot.label, {
+            fontSize: "10px",
+            color: "#89A7CC",
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 3)
+      );
+
+      addObject(
+        this.add
+          .text(105, y + 7, equippedItem?.icon || slot.fallback, {
+            fontSize: "29px",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+
+      addObject(
+        this.add
+          .text(
+            135,
+            y - 2,
+            equippedItem ? equippedItem.name : "Belum digunakan",
+            {
+              fontSize: equippedItem ? "12px" : "11px",
+              color: equippedItem
+                ? this.getRarityColor(equippedItem.rarity)
+                : "#7890AD",
+              fontStyle: equippedItem ? "bold" : "normal",
+              wordWrap: { width: 130 },
+            }
+          )
+          .setDepth(depth + 3)
+      );
+
+      if (equippedItem) {
+        addObject(
+          this.add
+            .text(135, y + 22, String(equippedItem.rarity).toUpperCase(), {
+              fontSize: "9px",
+              color: this.getRarityColor(equippedItem.rarity),
+              fontStyle: "bold",
+            })
+            .setDepth(depth + 3)
+        );
+      }
+    });
+
+    // TIP CARD dibuat lebih compact dan diberi napas dari slot equipment.
+    addObject(
+      this.add
+        .rectangle(180, 462, 210, 72, 0x0a1628, 0.92)
+        .setDepth(depth + 2)
+        .setStrokeStyle(1, 0x31577d, 0.75)
+    );
+
+    addObject(
+      this.add
+        .text(92, 438, "TIP", {
+          fontSize: "10px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          letterSpacing: 1,
+        })
+        .setDepth(depth + 3)
+    );
+
+    addObject(
+      this.add
+        .text(
+          92,
+          456,
+          "Equip item untuk mendapat bonus saat\nbelajar dan bertarung.",
+          {
+            fontSize: "9px",
+            color: "#AFC4DE",
+            lineSpacing: 4,
+            wordWrap: { width: 170 },
+          }
+        )
+        .setDepth(depth + 3)
+    );
+
+    // --------------------------------------------------
+    // RIGHT: ITEM BAG
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(310, 138, `ITEM BAG  ${this.playerData.inventory.length}`, {
+          fontSize: "15px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 2)
+    );
+
+    if (this.playerData.inventory.length === 0) {
+      addObject(
+        this.add
+          .rectangle(515, 310, 390, 270, 0x10233f, 0.75)
+          .setDepth(depth + 2)
+          .setStrokeStyle(1, 0x31577d, 0.75)
+      );
+
+      addObject(
+        this.add
+          .text(515, 290, "🎒", { fontSize: "44px" })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+
+      addObject(
+        this.add
+          .text(515, 340, "Inventory masih kosong", {
+            fontSize: "16px",
+            color: "#DCEBFF",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+    } else {
+      this.playerData.inventory.forEach((item, index) => {
+        const y = 185 + index * 86;
+        const rarityColor = this.getRarityColor(item.rarity);
+        const rarityNumber = parseInt(rarityColor.replace("#", ""), 16);
+        const equipped = this.isItemEquipped(item);
+
+        const card = addObject(
+          this.add
+            .rectangle(515, y, 390, 72, 0x132844, 1)
+            .setDepth(depth + 2)
+            .setStrokeStyle(2, rarityNumber, equipped ? 1 : 0.65)
+        );
+
+        addObject(
+          this.add
+            .text(340, y, item.icon || "🎒", {
+              fontSize: "30px",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y - 24, item.name, {
+              fontSize: "13px",
+              color: rarityColor,
+              fontStyle: "bold",
+            })
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y - 4, `${item.type}  •  ${String(item.rarity).toUpperCase()}`, {
+              fontSize: "9px",
+              color: "#91AAC8",
+              fontStyle: "bold",
+            })
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y + 15, item.description || "Tidak ada deskripsi.", {
+              fontSize: "9px",
+              color: "#D6E3F4",
+              wordWrap: { width: 205 },
+            })
+            .setDepth(depth + 3)
+        );
+
+        const equipButton = addObject(
+          this.add
+            .rectangle(
+              675,
+              y,
+              82,
+              30,
+              equipped ? 0x8b6b13 : 0x1d5f91,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, equipped ? 0xffe58a : 0x63a7d8, 0.9)
+            .setInteractive({ useHandCursor: true })
+        );
+
+        const equipText = addObject(
+          this.add
+            .text(675, y, equipped ? "UNEQUIP" : "EQUIP", {
+              fontSize: "9px",
+              color: "#FFFFFF",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        equipButton.on("pointerover", () => {
+          equipButton.setFillStyle(equipped ? 0xa47c17 : 0x2b78ad);
+          card.setFillStyle(0x183251, 1);
+        });
+
+        equipButton.on("pointerout", () => {
+          equipButton.setFillStyle(equipped ? 0x8b6b13 : 0x1d5f91);
+          card.setFillStyle(0x132844, 1);
+        });
+
+        equipButton.on("pointerdown", () => {
+          if (equipped) {
+            this.unequipItem(item);
+          } else {
+            this.equipItem(index);
+          }
+        });
+
+        // Agar text tidak menyerap klik tombol.
+        equipText.disableInteractive?.();
+      });
+    }
+
+    // --------------------------------------------------
+    // FOOTER / CLOSE
+    // --------------------------------------------------
+
+    // Divider memisahkan isi inventory dan action footer.
+    addObject(
+      this.add
+        .rectangle(400, 510, 650, 1, 0x31577d, 0.7)
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(75, 528, "Klik EQUIP untuk mengganti perlengkapan.", {
+          fontSize: "9px",
+          color: "#7890AD",
+        })
+        .setOrigin(0, 0.5)
+        .setDepth(depth + 3)
+    );
+
+    const closeButton = addObject(
+      this.add
+        .rectangle(660, 528, 132, 32, 0x1a365d, 1)
+        .setDepth(depth + 3)
+        .setStrokeStyle(2, 0xd4af37, 0.9)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const closeText = addObject(
+      this.add
+        .text(660, 528, "TUTUP   [ I ]", {
+          fontSize: "10px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    closeButton.on("pointerover", () => {
+      closeButton.setFillStyle(0x244a73, 1);
+      closeText.setColor("#FFE58A");
+    });
+
+    closeButton.on("pointerout", () => {
+      closeButton.setFillStyle(0x1a365d, 1);
+      closeText.setColor("#FFFFFF");
+    });
+
+    closeButton.on("pointerdown", () => {
+      this.closeInventory();
+    });
+  }
+
+  // ==================================================
+  // CLOSE INVENTORY
+  // ==================================================
+
+  closeInventory() {
+    if (!this.inventoryObjects) {
+      this.inventoryOpen = false;
+      return;
+    }
+
+    this.inventoryObjects.forEach((object) => {
+      if (object && object.active) {
+        object.destroy();
+      }
+    });
+
+    this.inventoryObjects = [];
+    this.inventoryOpen = false;
+
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.forestQuestDialogOpen ||
+      this.forestQuestCompleteOpen
+    );
+
+    this.setGameplayHUDVisible(shouldShowHUD);
+  }
+
 
   // ==================================================
   // GAMEPLAY HUD VISIBILITY
