@@ -741,36 +741,104 @@ class VillageScene extends Phaser.Scene {
         .setVisible(false);
 
     // ==================================================
-    // INTERACTION TEXT
+    // INTERACTION PROMPT UI
     // ==================================================
 
-    this.interactText =
-      this.add
-        .text(
-          400,
-          550,
-          "",
-          {
-            fontSize: "20px",
-            color: "#ffffff",
-            backgroundColor:
-              "#1A365D",
-
-            padding: {
-              left: 15,
-              right: 15,
-              top: 10,
-              bottom: 10,
-            },
-          }
-        )
-        .setOrigin(0.5);
-
-    this.interactText.setVisible(
-      false
-    );
+    this.createInteractionPromptUI();
 
     this.visualFoundation.animatePlayer(this.player);
+  }
+
+  // ==================================================
+  // MODERN INTERACTION PROMPT
+  // ==================================================
+
+  createInteractionPromptUI() {
+    this.interactionPrompt = this.add.container(400, 548);
+    this.interactionPrompt
+      .setDepth(1500)
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x111827, 0.94);
+    panel.fillRoundedRect(-176, -24, 352, 48, 14);
+    panel.lineStyle(2, 0xf6c453, 0.9);
+    panel.strokeRoundedRect(-176, -24, 352, 48, 14);
+
+    const keyCap = this.add.graphics();
+    keyCap.fillStyle(0xf8fafc, 1);
+    keyCap.fillRoundedRect(-158, -16, 34, 32, 8);
+    keyCap.lineStyle(2, 0xf6c453, 1);
+    keyCap.strokeRoundedRect(-158, -16, 34, 32, 8);
+
+    this.interactKeyText = this.add
+      .text(-141, 0, "E", {
+        fontSize: "16px",
+        color: "#111827",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.interactText = this.add
+      .text(-112, 0, "", {
+        fontSize: "15px",
+        color: "#F8FAFC",
+        fontStyle: "bold",
+      })
+      .setOrigin(0, 0.5);
+
+    this.interactionPrompt.add([
+      panel,
+      keyCap,
+      this.interactKeyText,
+      this.interactText,
+    ]);
+  }
+
+  showInteractionPrompt(message) {
+    if (!this.interactionPrompt || !this.interactText) {
+      return;
+    }
+
+    // Jangan tampilkan prompt interaksi ketika UI modal sedang terbuka.
+    // Ini mencegah prompt [ E ] tetap terlihat setelah dialog/quiz/battle dibuka.
+    if (
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen ||
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen
+    ) {
+      this.hideInteractionPrompt();
+      return;
+    }
+
+    const wasVisible = this.interactionPrompt.visible;
+    this.interactText.setText(message);
+    this.interactionPrompt.setVisible(true);
+
+    if (!wasVisible) {
+      this.interactionPrompt.setAlpha(0);
+      this.interactionPrompt.setScale(0.96);
+
+      this.tweens.killTweensOf(this.interactionPrompt);
+      this.tweens.add({
+        targets: this.interactionPrompt,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 120,
+        ease: "Quad.easeOut",
+      });
+    }
+  }
+
+  hideInteractionPrompt() {
+    if (this.interactionPrompt) {
+      this.interactionPrompt.setVisible(false);
+    }
   }
 
   // ==================================================
@@ -829,6 +897,8 @@ class VillageScene extends Phaser.Scene {
       this.isBattleOpen ||
       this.isBattleQuestionOpen
     ) {
+      this.hideInteractionPrompt();
+
       this.player.body.setVelocity(
         0,
         0
@@ -843,9 +913,7 @@ class VillageScene extends Phaser.Scene {
     // RESET INTERACTION
     // ==================================================
 
-    this.interactText.setVisible(
-      false
-    );
+    this.hideInteractionPrompt();
 
     this.player.body.setVelocity(
       0,
@@ -926,6 +994,12 @@ class VillageScene extends Phaser.Scene {
       this.grammarMaster.checkDistance(
         this.player
       );
+
+      // Step 2D.2 memakai satu prompt global di bawah layar,
+      // jadi bubble lama di atas NPC disembunyikan.
+      if (this.grammarMaster.interactionText) {
+        this.grammarMaster.interactionText.setVisible(false);
+      }
     }
 
     // ==================================================
@@ -1014,12 +1088,8 @@ class VillageScene extends Phaser.Scene {
       nearestChest &&
       nearestChestDistance < 80
     ) {
-      this.interactText.setText(
-        "[ E ] Buka Chest"
-      );
-
-      this.interactText.setVisible(
-        true
+      this.showInteractionPrompt(
+        "Buka chest"
       );
 
       if (
@@ -1051,12 +1121,8 @@ class VillageScene extends Phaser.Scene {
         nearestChestDistance >= 80
       )
     ) {
-      this.interactText.setText(
-        `[ E ] Lawan ${nearestMonster.name}`
-      );
-
-      this.interactText.setVisible(
-        true
+      this.showInteractionPrompt(
+        `Lawan ${nearestMonster.name}`
       );
 
       if (
@@ -1087,13 +1153,18 @@ class VillageScene extends Phaser.Scene {
         !nearestMonster.isNearby
       )
     ) {
-      if (
-        this.grammarMaster.isNearby &&
-        Phaser.Input.Keyboard.JustDown(
-          this.interactKey
-        )
-      ) {
-        this.grammarMaster.talk();
+      if (this.grammarMaster.isNearby) {
+        this.showInteractionPrompt(
+          "Bicara dengan Grammar Master"
+        );
+
+        if (
+          Phaser.Input.Keyboard.JustDown(
+            this.interactKey
+          )
+        ) {
+          this.grammarMaster.talk();
+        }
       }
     }
 
@@ -1115,16 +1186,12 @@ class VillageScene extends Phaser.Scene {
       if (
         gateDistance < 90
       ) {
-        this.forestGatePrompt.setVisible(
-          true
-        );
+        // Prompt floating lama tidak dipakai lagi;
+        // semua interaksi memakai panel global yang konsisten.
+        this.forestGatePrompt.setVisible(false);
 
-        this.interactText.setText(
-          "[ E ] Masuk Forest of Isim"
-        );
-
-        this.interactText.setVisible(
-          true
+        this.showInteractionPrompt(
+          "Masuk Forest of Isim"
         );
 
       } else {
@@ -1169,9 +1236,7 @@ class VillageScene extends Phaser.Scene {
       false
     );
 
-    this.interactText.setVisible(
-      false
-    );
+    this.hideInteractionPrompt();
 
     this.visualFoundation.playSceneTransition({
       title: "FOREST OF ISIM",
@@ -1371,9 +1436,11 @@ class VillageScene extends Phaser.Scene {
     this.battleSkillButton = null;
 
     // Hide interaction
-    this.interactText.setVisible(
-      false
-    );
+    this.hideInteractionPrompt();
+
+    // Battle harus fokus penuh ke arena battle.
+    // HUD eksplorasi (LVL / XP / GOLD / Quest) disembunyikan sementara.
+    this.setGameplayHUDVisible(false);
 
     this.battleObjects = [];
 
@@ -1401,12 +1468,19 @@ class VillageScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        700,
-        520,
-        0xffffff
+        720,
+        535,
+        0x0b1728,
+        0.98
       );
 
-    panel.setDepth(601);
+    panel
+      .setDepth(601)
+      .setStrokeStyle(
+        3,
+        0xd8b43f,
+        1
+      );
 
     // ==================================================
     // TITLE
@@ -1416,12 +1490,14 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          55,
-          "⚔️ BATTLE",
+          58,
+          "⚔ BATTLE ARENA",
           {
-            fontSize: "34px",
-            color: "#1A365D",
+            fontSize: "28px",
+            color: "#F6D365",
             fontStyle: "bold",
+            stroke: "#07111F",
+            strokeThickness: 4,
           }
         )
         .setOrigin(0.5);
@@ -1436,11 +1512,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          105,
+          103,
           monster.name,
           {
-            fontSize: "26px",
-            color: "#C53030",
+            fontSize: "22px",
+            color: "#F87171",
             fontStyle: "bold",
           }
         )
@@ -1454,55 +1530,50 @@ class VillageScene extends Phaser.Scene {
 
     const monsterHPBackground =
       this.add.rectangle(
-        230,
-        150,
-        340,
-        20,
-        0x1a365d
+        235,
+        140,
+        330,
+        18,
+        0x07111f
       );
 
-    monsterHPBackground.setDepth(
-      602
-    );
-
-    monsterHPBackground.setOrigin(
-      0,
-      0.5
-    );
+    monsterHPBackground
+      .setDepth(602)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(
+        1,
+        0x34516f,
+        1
+      );
 
     const monsterHPBar =
       this.add.rectangle(
-        230,
-        150,
-        340,
-        20,
-        0xdc2626
+        235,
+        140,
+        330,
+        18,
+        0xdc3f4f
       );
 
-    monsterHPBar.setDepth(603);
-
-    monsterHPBar.setOrigin(
-      0,
-      0.5
-    );
+    monsterHPBar
+      .setDepth(603)
+      .setOrigin(0, 0.5);
 
     this.battleMonsterHPText =
       this.add
         .text(
           400,
-          180,
+          166,
           "",
           {
-            fontSize: "17px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#D7E5F5",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battleMonsterHPText.setDepth(
-      602
-    );
+    this.battleMonsterHPText.setDepth(602);
 
     // ==================================================
     // PLAYER NAME
@@ -1512,11 +1583,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          225,
+          220,
           "PLAYER",
           {
-            fontSize: "24px",
-            color: "#3182CE",
+            fontSize: "21px",
+            color: "#73B7FF",
             fontStyle: "bold",
           }
         )
@@ -1530,55 +1601,50 @@ class VillageScene extends Phaser.Scene {
 
     const playerHPBackground =
       this.add.rectangle(
-        230,
-        265,
-        340,
-        20,
-        0x1a365d
+        235,
+        257,
+        330,
+        18,
+        0x07111f
       );
 
-    playerHPBackground.setDepth(
-      602
-    );
-
-    playerHPBackground.setOrigin(
-      0,
-      0.5
-    );
+    playerHPBackground
+      .setDepth(602)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(
+        1,
+        0x34516f,
+        1
+      );
 
     const playerHPBar =
       this.add.rectangle(
-        230,
-        265,
-        340,
-        20,
-        0x3182ce
+        235,
+        257,
+        330,
+        18,
+        0x3b8edb
       );
 
-    playerHPBar.setDepth(603);
-
-    playerHPBar.setOrigin(
-      0,
-      0.5
-    );
+    playerHPBar
+      .setDepth(603)
+      .setOrigin(0, 0.5);
 
     this.battlePlayerHPText =
       this.add
         .text(
           400,
-          295,
+          283,
           "",
           {
-            fontSize: "17px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#D7E5F5",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battlePlayerHPText.setDepth(
-      602
-    );
+    this.battlePlayerHPText.setDepth(602);
 
     // ==================================================
     // PLAYER STATS
@@ -1588,11 +1654,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          325,
-          `ATK: ${this.getPlayerAttack()}    DEF: ${this.getTotalDefense()}`,
+          312,
+          `ATK ${this.getPlayerAttack()}    •    DEF ${this.getTotalDefense()}`,
           {
-            fontSize: "16px",
-            color: "#4A5568",
+            fontSize: "14px",
+            color: "#AFC5DB",
             fontStyle: "bold",
           }
         )
@@ -1608,62 +1674,58 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          350,
+          338,
           "COMBO x0",
           {
-            fontSize: "16px",
-            color: "#D69E2E",
+            fontSize: "15px",
+            color: "#F6D365",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battleComboText.setDepth(
-      602
-    );
-
-    // ==================================================
-    // BATTLE LOG BACKGROUND
-    // ==================================================
-
-    const battleLogBackground =
-      this.add.rectangle(
-        400,
-        390,
-        570,
-        55,
-        0xf1f5f9
-      );
-
-    battleLogBackground.setDepth(
-      602
-    );
+    this.battleComboText.setDepth(602);
 
     // ==================================================
     // BATTLE LOG
     // ==================================================
 
+    const battleLogBackground =
+      this.add.rectangle(
+        400,
+        382,
+        590,
+        58,
+        0x132842,
+        1
+      );
+
+    battleLogBackground
+      .setDepth(602)
+      .setStrokeStyle(
+        1,
+        0x355b7d,
+        1
+      );
+
     this.battleLogText =
       this.add
         .text(
           400,
-          390,
+          382,
           `Battle melawan ${monster.name} dimulai!`,
           {
-            fontSize: "15px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#E8F0F8",
             align: "center",
-
             wordWrap: {
-              width: 530,
+              width: 545,
             },
           }
         )
         .setOrigin(0.5);
 
-    this.battleLogText.setDepth(
-      603
-    );
+    this.battleLogText.setDepth(603);
 
     // ==================================================
     // BATTLE CHARACTER VISUALS
@@ -1672,27 +1734,39 @@ class VillageScene extends Phaser.Scene {
     this.battlePlayerVisual =
       this.add.container(
         150,
-        265
+        255
       );
 
     const battlePlayerBody =
-      this.add.circle(
+      this.add.sprite(
         0,
         0,
-        22,
-        0x3182ce
+        "playerWalkPixel",
+        0
       );
+
+    battlePlayerBody.setDisplaySize(
+      90,
+      90
+    );
 
     const battlePlayerMark =
       this.add
         .text(
           0,
-          0,
-          "⚔",
+          50,
+          "YOU",
           {
-            fontSize: "19px",
-            color: "#ffffff",
+            fontSize: "10px",
+            color: "#F6D365",
             fontStyle: "bold",
+            backgroundColor: "#0B1728",
+            padding: {
+              left: 5,
+              right: 5,
+              top: 2,
+              bottom: 2,
+            },
           }
         )
         .setOrigin(0.5);
@@ -1702,14 +1776,12 @@ class VillageScene extends Phaser.Scene {
       battlePlayerMark,
     ]);
 
-    this.battlePlayerVisual.setDepth(
-      603
-    );
+    this.battlePlayerVisual.setDepth(603);
 
     this.battleMonsterVisual =
       this.add.container(
         650,
-        150
+        140
       );
 
     const battleTexture =
@@ -1725,20 +1797,18 @@ class VillageScene extends Phaser.Scene {
 
     battleMonsterBody.setDisplaySize(
       this.currentMonster?.id === "irabGolem"
-        ? 120
-        : 105,
+        ? 118
+        : 102,
       this.currentMonster?.id === "irabGolem"
-        ? 120
-        : 105
+        ? 118
+        : 102
     );
 
     this.battleMonsterVisual.add(
       battleMonsterBody
     );
 
-    this.battleMonsterVisual.setDepth(
-      603
-    );
+    this.battleMonsterVisual.setDepth(603);
 
     this.visualFoundation.animateBattleEntry(
       this.battlePlayerVisual,
@@ -1752,13 +1822,19 @@ class VillageScene extends Phaser.Scene {
     const attackButton =
       this.add.rectangle(
         200,
-        465,
+        462,
         170,
-        55,
-        0xc53030
+        52,
+        0xb8323e
       );
 
-    attackButton.setDepth(602);
+    attackButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     attackButton.setInteractive({
       useHandCursor: true,
@@ -1768,10 +1844,10 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           200,
-          465,
-          "⚔️ SERANG",
+          462,
+          "⚔ SERANG",
           {
-            fontSize: "17px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1787,13 +1863,19 @@ class VillageScene extends Phaser.Scene {
     const skillButton =
       this.add.rectangle(
         400,
-        465,
+        462,
         170,
-        55,
-        0x718096
+        52,
+        0x596274
       );
 
-    skillButton.setDepth(602);
+    skillButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     skillButton.setInteractive({
       useHandCursor: true,
@@ -1803,10 +1885,10 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          465,
-          "✨ SKILL",
+          462,
+          "✦ SKILL",
           {
-            fontSize: "17px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1825,13 +1907,19 @@ class VillageScene extends Phaser.Scene {
     const defendButton =
       this.add.rectangle(
         600,
-        465,
+        462,
         170,
-        55,
-        0x3182ce
+        52,
+        0x2f76b7
       );
 
-    defendButton.setDepth(602);
+    defendButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     defendButton.setInteractive({
       useHandCursor: true,
@@ -1841,10 +1929,10 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           600,
-          465,
-          "🛡️ BERTAHAN",
+          462,
+          "🛡 BERTAHAN",
           {
-            fontSize: "19px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1877,10 +1965,6 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    // ==================================================
-    // HOVER SKILL
-    // ==================================================
-
     skillButton.on(
       "pointerover",
       () => {
@@ -1893,7 +1977,7 @@ class VillageScene extends Phaser.Scene {
           skills.powerStrike.requiredCombo
         ) {
           skillButton.setFillStyle(
-            0x9f7aea
+            0x8b5cf6
           );
         }
       }
@@ -1907,11 +1991,11 @@ class VillageScene extends Phaser.Scene {
           skills.powerStrike.requiredCombo
         ) {
           skillButton.setFillStyle(
-            0x805ad5
+            0x7651c9
           );
         } else {
           skillButton.setFillStyle(
-            0x718096
+            0x596274
           );
         }
       }
@@ -1924,13 +2008,19 @@ class VillageScene extends Phaser.Scene {
     const exitButton =
       this.add.rectangle(
         400,
-        525,
-        180,
-        40,
-        0x4a5568
+        527,
+        170,
+        38,
+        0x14243a
       );
 
-    exitButton.setDepth(602);
+    exitButton
+      .setDepth(602)
+      .setStrokeStyle(
+        1,
+        0x5f7891,
+        1
+      );
 
     exitButton.setInteractive({
       useHandCursor: true,
@@ -1940,11 +2030,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          525,
+          527,
           "KELUAR",
           {
-            fontSize: "15px",
-            color: "#ffffff",
+            fontSize: "13px",
+            color: "#C9D6E4",
             fontStyle: "bold",
           }
         )
@@ -1988,15 +2078,15 @@ class VillageScene extends Phaser.Scene {
           this.playerMaxHP;
 
         monsterHPBar.setDisplaySize(
-          340 *
+          330 *
             monsterPercentage,
-          20
+          18
         );
 
         playerHPBar.setDisplaySize(
-          340 *
+          330 *
             playerPercentage,
-          20
+          18
         );
 
         this.battleMonsterHPText.setText(
@@ -2021,11 +2111,11 @@ class VillageScene extends Phaser.Scene {
             skills.powerStrike.requiredCombo
           ) {
             this.battleSkillButton.setFillStyle(
-              0x805ad5
+              0x7651c9
             );
           } else {
             this.battleSkillButton.setFillStyle(
-              0x718096
+              0x596274
             );
           }
         }
@@ -2148,7 +2238,7 @@ class VillageScene extends Phaser.Scene {
         }
 
         attackButton.setFillStyle(
-          0xe53e3e
+          0xd94855
         );
       }
     );
@@ -2157,7 +2247,7 @@ class VillageScene extends Phaser.Scene {
       "pointerout",
       () => {
         attackButton.setFillStyle(
-          0xc53030
+          0xb8323e
         );
       }
     );
@@ -2176,7 +2266,7 @@ class VillageScene extends Phaser.Scene {
         }
 
         defendButton.setFillStyle(
-          0x4299e1
+          0x3f93d8
         );
       }
     );
@@ -2185,7 +2275,7 @@ class VillageScene extends Phaser.Scene {
       "pointerout",
       () => {
         defendButton.setFillStyle(
-          0x3182ce
+          0x2f76b7
         );
       }
     );
@@ -2354,8 +2444,8 @@ class VillageScene extends Phaser.Scene {
         300,
         800,
         600,
-        0x000000,
-        0.72
+        0x020817,
+        0.9
       );
 
     overlay.setDepth(800);
@@ -2368,12 +2458,19 @@ class VillageScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        650,
-        470,
-        0xffffff
+        660,
+        480,
+        0x0b1728,
+        1
       );
 
-    panel.setDepth(801);
+    panel
+      .setDepth(801)
+      .setStrokeStyle(
+        3,
+        0xd8b43f,
+        1
+      );
 
     // ==================================================
     // TITLE
@@ -2383,11 +2480,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          75,
+          72,
           "📖 NAHWU CHALLENGE",
           {
-            fontSize: "30px",
-            color: "#1A365D",
+            fontSize: "26px",
+            color: "#F6D365",
             fontStyle: "bold",
           }
         )
@@ -2403,12 +2500,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          120,
-          "Jawab dengan benar untuk menyerang!",
+          112,
+          "Jawab dengan benar untuk melancarkan serangan",
           {
-            fontSize: "15px",
-            color: "#718096",
-            fontStyle: "italic",
+            fontSize: "13px",
+            color: "#9DB5CC",
           }
         )
         .setOrigin(0.5);
@@ -2423,11 +2519,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          150,
-          `Difficulty: ${this.currentBattleQuestion.difficulty}`,
+          140,
+          `DIFFICULTY  •  ${String(this.currentBattleQuestion.difficulty).toUpperCase()}`,
           {
-            fontSize: "14px",
-            color: "#D69E2E",
+            fontSize: "12px",
+            color: "#E7BE4E",
             fontStyle: "bold",
           }
         )
@@ -2443,16 +2539,15 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          205,
+          202,
           this.currentBattleQuestion.question,
           {
-            fontSize: "21px",
-            color: "#2D3748",
+            fontSize: "19px",
+            color: "#F4F7FB",
             fontStyle: "bold",
             align: "center",
-
             wordWrap: {
-              width: 540,
+              width: 550,
             },
           }
         )
@@ -2479,19 +2574,21 @@ class VillageScene extends Phaser.Scene {
         index
       ) => {
         const y =
-          270 +
-          index * 55;
+          275 +
+          index * 53;
 
         const button =
           this.add.rectangle(
             400,
             y,
-            500,
+            520,
             42,
-            0xeaf2ff
+            0x142a46
           );
 
-        button.setDepth(802);
+        button
+          .setDepth(802)
+          .setStrokeStyle(1, 0x355b7d, 1);
 
         button.setInteractive({
           useHandCursor: true,
@@ -2502,10 +2599,10 @@ class VillageScene extends Phaser.Scene {
             .text(
               400,
               y,
-              answer.text,
+              `${String.fromCharCode(65 + index)}.  ${answer.text}`,
               {
                 fontSize: "18px",
-                color: "#1A365D",
+                color: "#E8F0F8",
                 fontStyle: "bold",
               }
             )
@@ -2532,7 +2629,7 @@ class VillageScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0x3182ce
+              0x245a87
             );
 
             text.setColor(
@@ -2551,11 +2648,11 @@ class VillageScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0xeaf2ff
+              0x142a46
             );
 
             text.setColor(
-              "#1A365D"
+              "#E8F0F8"
             );
           }
         );
@@ -2942,11 +3039,13 @@ class VillageScene extends Phaser.Scene {
         360,
         560,
         245,
-        0x111827,
-        0.98
+        0x0b1728,
+        0.99
       );
 
-    overlay.setDepth(900);
+    overlay
+      .setDepth(900)
+      .setStrokeStyle(2, 0xd8b43f, 0.9);
 
     overlay.setInteractive();
 
@@ -3251,24 +3350,30 @@ class VillageScene extends Phaser.Scene {
         300,
         800,
         600,
-        0x000000,
-        0.82
+        0x020817,
+        0.92
       );
 
     overlay.setDepth(1000);
-
     overlay.setInteractive();
 
     const panel =
       this.add.rectangle(
         400,
         300,
-        650,
-        470,
-        0xffffff
+        660,
+        480,
+        0x0b1728,
+        1
       );
 
-    panel.setDepth(1001);
+    panel
+      .setDepth(1001)
+      .setStrokeStyle(
+        3,
+        0x9f7aea,
+        1
+      );
 
     const skill =
       skills[this.currentSkill];
@@ -3277,11 +3382,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          85,
+          78,
           `${skill.icon} ${skill.name}`,
           {
-            fontSize: "30px",
-            color: "#805ad5",
+            fontSize: "27px",
+            color: "#C4A7FF",
             fontStyle: "bold",
           }
         )
@@ -3293,12 +3398,11 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          125,
-          "Jawab dengan benar untuk menggunakan skill!",
+          118,
+          "Jawab dengan benar untuk mengaktifkan skill",
           {
-            fontSize: "15px",
-            color: "#718096",
-            fontStyle: "italic",
+            fontSize: "13px",
+            color: "#9DB5CC",
           }
         )
         .setOrigin(0.5);
@@ -3309,15 +3413,15 @@ class VillageScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          215,
+          205,
           question.question,
           {
-            fontSize: "22px",
-            color: "#2D3748",
+            fontSize: "20px",
+            color: "#F4F7FB",
             fontStyle: "bold",
             align: "center",
             wordWrap: {
-              width: 540,
+              width: 550,
             },
           }
         )
@@ -3336,18 +3440,20 @@ class VillageScene extends Phaser.Scene {
     question.answers.forEach(
       (answer, index) => {
         const y =
-          300 + index * 58;
+          290 + index * 55;
 
         const button =
           this.add.rectangle(
             400,
             y,
-            500,
+            520,
             44,
-            0xeaf2ff
+            0x142a46
           );
 
-        button.setDepth(1002);
+        button
+          .setDepth(1002)
+          .setStrokeStyle(1, 0x4b3f72, 1);
         button.setInteractive({
           useHandCursor: true,
         });
@@ -3357,10 +3463,10 @@ class VillageScene extends Phaser.Scene {
             .text(
               400,
               y,
-              answer.text,
+              `${String.fromCharCode(65 + index)}.  ${answer.text}`,
               {
                 fontSize: "17px",
-                color: "#1A365D",
+                color: "#E8F0F8",
                 fontStyle: "bold",
               }
             )
@@ -3381,7 +3487,7 @@ class VillageScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0x3182ce
+              0x6d4fb4
             );
 
             answerText.setColor(
@@ -3398,11 +3504,11 @@ class VillageScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0xeaf2ff
+              0x142a46
             );
 
             answerText.setColor(
-              "#1A365D"
+              "#E8F0F8"
             );
           }
         );
@@ -4170,12 +4276,14 @@ class VillageScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        560,
+        570,
         350,
-        0xffffff
+        0x0b1728
       );
 
-    panel.setDepth(701);
+    panel
+      .setDepth(701)
+      .setStrokeStyle(3, 0xd8b43f, 1);
 
     const title =
       this.add
@@ -4188,8 +4296,8 @@ class VillageScene extends Phaser.Scene {
 
             color:
               victory
-                ? "#15803D"
-                : "#DC2626",
+                ? "#68D391"
+                : "#FC8181",
 
             fontStyle: "bold",
           }
@@ -4207,7 +4315,7 @@ class VillageScene extends Phaser.Scene {
           {
             fontSize: "19px",
 
-            color: "#2D3748",
+            color: "#D7E5F5",
 
             align: "center",
 
@@ -4226,10 +4334,12 @@ class VillageScene extends Phaser.Scene {
         430,
         220,
         55,
-        0x1a365d
+        0xd8b43f
       );
 
-    button.setDepth(702);
+    button
+      .setDepth(702)
+      .setStrokeStyle(2, 0xf6d365, 1);
 
     button.setInteractive({
       useHandCursor: true,
@@ -4243,7 +4353,7 @@ class VillageScene extends Phaser.Scene {
           "LANJUT",
           {
             fontSize: "19px",
-            color: "#ffffff",
+            color: "#0B1728",
             fontStyle: "bold",
           }
         )
@@ -4323,9 +4433,10 @@ class VillageScene extends Phaser.Scene {
         this.battleSkillButton =
           null;
 
-        this.interactText.setVisible(
-          false
-        );
+        this.hideInteractionPrompt();
+
+        // Battle selesai. Kembalikan HUD eksplorasi.
+        this.setGameplayHUDVisible(true);
       }
     );
   }
@@ -4495,6 +4606,9 @@ class VillageScene extends Phaser.Scene {
 
     this.battleSkillButton =
       null;
+
+    // Player kembali ke map, tampilkan HUD lagi.
+    this.setGameplayHUDVisible(true);
   }
 
   // ==================================================
@@ -4550,6 +4664,36 @@ class VillageScene extends Phaser.Scene {
       ] || 0;
 
     return attack;
+  }
+
+  // ==================================================
+  // GAMEPLAY HUD VISIBILITY
+  // ==================================================
+
+  setGameplayHUDVisible(visible) {
+    const hudObjects = [
+      this.hudLeftPanel,
+      this.levelText,
+      this.xpText,
+      this.xpBarBackground,
+      this.xpBarFill,
+      this.hudGoldPanel,
+      this.goldText,
+    ];
+
+    hudObjects.forEach((object) => {
+      if (object && object.active) {
+        object.setVisible(visible);
+      }
+    });
+
+    if (Array.isArray(this.questObjects)) {
+      this.questObjects.forEach((object) => {
+        if (object && object.active) {
+          object.setVisible(visible);
+        }
+      });
+    }
   }
 
   // ==================================================
@@ -5383,9 +5527,11 @@ class VillageScene extends Phaser.Scene {
     this.answerLocked =
       false;
 
-    this.interactText.setVisible(
-      false
-    );
+    // Chest quiz adalah UI fokus penuh.
+    // Sembunyikan HUD eksplorasi agar LVL / XP / GOLD / Quest
+    // tidak menimpa panel soal.
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
 
     this.showQuiz();
   }
@@ -5896,6 +6042,7 @@ class VillageScene extends Phaser.Scene {
         }
 
         this.updateHUD();
+        this.setGameplayHUDVisible(true);
       }
     );
   }
@@ -5929,138 +6076,342 @@ class VillageScene extends Phaser.Scene {
   showNPCDialog(
     npc
   ) {
-    this.npcDialogOpen =
-      true;
+    this.npcDialogOpen = true;
 
-    this.npcDialogObjects =
-      [];
+    // Modal dialog: world stays visible, but exploration HUD/prompt are hidden.
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
 
-    const overlay =
-      this.add.rectangle(
+    this.npcDialogObjects = [];
+
+    const depth = 5000;
+
+    // ==================================================
+    // DARKEN WORLD
+    // ==================================================
+
+    const overlay = this.add
+      .rectangle(
         400,
         300,
         800,
         600,
-        0x000000,
-        0.55
-      );
+        0x050911,
+        0.70
+      )
+      .setDepth(depth)
+      .setScrollFactor(0);
 
-    overlay.setDepth(400);
+    // ==================================================
+    // MAIN DIALOG PANEL
+    // ==================================================
 
-    const panel =
-      this.add.rectangle(
+    const panel = this.add
+      .rectangle(
         400,
-        425,
-        700,
-        240,
-        0xffffff
+        438,
+        730,
+        264,
+        0x0d1b2d,
+        0.99
+      )
+      .setDepth(depth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(
+        3,
+        0xd7ad3a,
+        1
       );
 
-    panel.setDepth(401);
+    const topAccent = this.add
+      .rectangle(
+        400,
+        307,
+        730,
+        5,
+        0xe4bd4f,
+        1
+      )
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
 
-    const name =
-      this.add
-        .text(
-          80,
-          325,
-          "👨‍🏫 " +
-            npc.npcName,
-          {
-            fontSize: "24px",
-            color: "#1A365D",
-            fontStyle: "bold",
-          }
-        );
+    // ==================================================
+    // PORTRAIT COLUMN
+    // ==================================================
 
-    name.setDepth(402);
+    const portraitFrame = this.add
+      .rectangle(
+        128,
+        425,
+        130,
+        174,
+        0x091321,
+        1
+      )
+      .setDepth(depth + 2)
+      .setScrollFactor(0)
+      .setStrokeStyle(
+        2,
+        0x5c86b2,
+        1
+      );
 
-    const dialog =
-      this.add.text(
-        80,
-        365,
-        "Selamat datang di Nahwu Village!\n" +
-          "Aku punya sebuah tantangan untukmu.",
+    const portrait = this.add
+      .image(
+        128,
+        424,
+        "grammarMasterPixel"
+      )
+      .setDisplaySize(
+        96,
+        132
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
+
+    const roleBadge = this.add
+      .text(
+        128,
+        522,
+        "QUEST GIVER",
         {
-          fontSize: "19px",
-          color: "#2D3748",
-          lineSpacing: 8,
+          fontSize: "9px",
+          color: "#FFE79A",
+          fontStyle: "bold",
+          backgroundColor: "#142A45",
+          padding: {
+            left: 7,
+            right: 7,
+            top: 3,
+            bottom: 3,
+          },
         }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 4)
+      .setScrollFactor(0);
+
+    // ==================================================
+    // SPEAKER + DIALOGUE
+    // ==================================================
+
+    const name = this.add
+      .text(
+        212,
+        326,
+        npc.npcName,
+        {
+          fontSize: "21px",
+          color: "#FFF1B8",
+          fontStyle: "bold",
+          stroke: "#07111F",
+          strokeThickness: 4,
+        }
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
+
+    const divider = this.add
+      .rectangle(
+        465,
+        357,
+        506,
+        2,
+        0x36597c,
+        0.9
+      )
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+
+    const dialog = this.add
+      .text(
+        212,
+        370,
+        "Selamat datang di Nahwu Village!\n" +
+          "Aku punya tantangan untuk melatih pemahaman Isim-mu.",
+        {
+          fontSize: "14px",
+          color: "#E7F0FA",
+          lineSpacing: 6,
+          wordWrap: {
+            width: 505,
+          },
+        }
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
+
+    // ==================================================
+    // QUEST CARD
+    // ==================================================
+
+    const quest = quests.basicIsim;
+
+    const questCard = this.add
+      .rectangle(
+        465,
+        463,
+        506,
+        82,
+        0x132943,
+        0.96
+      )
+      .setDepth(depth + 2)
+      .setScrollFactor(0)
+      .setStrokeStyle(
+        1,
+        0x557ea8,
+        1
       );
 
-    dialog.setDepth(402);
-
-    const quest =
-      quests.basicIsim;
-
-    const questTitle =
-      this.add.text(
-        80,
-        425,
-        `Quest: ${quest.title}`,
+    const questLabel = this.add
+      .text(
+        226,
+        432,
+        "NEW QUEST",
         {
-          fontSize: "18px",
-          color: "#D4AF37",
+          fontSize: "9px",
+          color: "#8FC7FF",
           fontStyle: "bold",
         }
-      );
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
 
-    questTitle.setDepth(402);
+    const questTitle = this.add
+      .text(
+        226,
+        448,
+        quest.title,
+        {
+          fontSize: "14px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        }
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
 
-    const questDescription =
-      this.add.text(
-        80,
-        455,
+    const questDescription = this.add
+      .text(
+        226,
+        474,
         quest.description,
         {
-          fontSize: "16px",
-          color: "#2D3748",
+          fontSize: "12px",
+          color: "#C9D9EA",
+          wordWrap: {
+            width: 468,
+          },
         }
-      );
+      )
+      .setDepth(depth + 3)
+      .setScrollFactor(0);
 
-    questDescription.setDepth(
-      402
+    // ==================================================
+    // BUTTONS
+    // ==================================================
+
+    const closeButton = this.add
+      .rectangle(
+        500,
+        542,
+        150,
+        38,
+        0x172C45,
+        1
+      )
+      .setDepth(depth + 4)
+      .setScrollFactor(0)
+      .setStrokeStyle(
+        1,
+        0x55789A,
+        1
+      )
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    const closeText = this.add
+      .text(
+        500,
+        542,
+        "NANTI",
+        {
+          fontSize: "13px",
+          color: "#DCE9F6",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 5)
+      .setScrollFactor(0);
+
+    const acceptButton = this.add
+      .rectangle(
+        664,
+        542,
+        170,
+        38,
+        0xD7AD3A,
+        1
+      )
+      .setDepth(depth + 4)
+      .setScrollFactor(0)
+      .setStrokeStyle(
+        2,
+        0xFFE68A,
+        1
+      )
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    const acceptText = this.add
+      .text(
+        664,
+        542,
+        "TERIMA QUEST",
+        {
+          fontSize: "13px",
+          color: "#102039",
+          fontStyle: "bold",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(depth + 5)
+      .setScrollFactor(0);
+
+    closeButton.on(
+      "pointerover",
+      () => {
+        closeButton.setFillStyle(
+          0x234766
+        );
+      }
     );
 
-    // ==================================================
-    // ACCEPT
-    // ==================================================
+    closeButton.on(
+      "pointerout",
+      () => {
+        closeButton.setFillStyle(
+          0x172C45
+        );
+      }
+    );
 
-    const acceptButton =
-      this.add.rectangle(
-        620,
-        510,
-        220,
-        55,
-        0xd4af37
-      );
-
-    acceptButton.setDepth(405);
-
-    acceptButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const acceptText =
-      this.add
-        .text(
-          620,
-          510,
-          "TERIMA QUEST",
-          {
-            fontSize: "17px",
-            color: "#1A365D",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    acceptText.setDepth(406);
+    closeButton.on(
+      "pointerdown",
+      () => {
+        this.closeNPCDialog();
+      }
+    );
 
     acceptButton.on(
       "pointerover",
       () => {
         acceptButton.setFillStyle(
-          0xffdf70
+          0xF1CA58
         );
       }
     );
@@ -6069,7 +6420,7 @@ class VillageScene extends Phaser.Scene {
       "pointerout",
       () => {
         acceptButton.setFillStyle(
-          0xd4af37
+          0xD7AD3A
         );
       }
     );
@@ -6083,59 +6434,73 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    // ==================================================
-    // NANTI
-    // ==================================================
-
-    const closeButton =
-      this.add.rectangle(
-        620,
-        575,
-        220,
-        40,
-        0x1a365d
-      );
-
-    closeButton.setDepth(405);
-
-    closeButton.setInteractive({
-      useHandCursor: true,
-    });
-
-    const closeText =
-      this.add
-        .text(
-          620,
-          575,
-          "NANTI",
-          {
-            fontSize: "15px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    closeText.setDepth(406);
-
-    closeButton.on(
-      "pointerdown",
-      () => {
-        this.closeNPCDialog();
+    // Compact fade-in. All elements share the same timing to avoid
+    // misalignment while the modal enters.
+    [
+      panel,
+      topAccent,
+      portraitFrame,
+      portrait,
+      roleBadge,
+      name,
+      divider,
+      dialog,
+      questCard,
+      questLabel,
+      questTitle,
+      questDescription,
+      closeButton,
+      closeText,
+      acceptButton,
+      acceptText,
+    ].forEach(
+      (object) => {
+        object.setAlpha(0);
       }
     );
+
+    this.tweens.add({
+      targets: [
+        panel,
+        topAccent,
+        portraitFrame,
+        portrait,
+        roleBadge,
+        name,
+        divider,
+        dialog,
+        questCard,
+        questLabel,
+        questTitle,
+        questDescription,
+        closeButton,
+        closeText,
+        acceptButton,
+        acceptText,
+      ],
+      alpha: 1,
+      duration: 150,
+      ease: "Power2",
+    });
 
     this.npcDialogObjects.push(
       overlay,
       panel,
+      topAccent,
+      portraitFrame,
+      portrait,
+      roleBadge,
       name,
+      divider,
       dialog,
+      questCard,
+      questLabel,
       questTitle,
       questDescription,
-      acceptButton,
-      acceptText,
       closeButton,
-      closeText
+      closeText,
+      acceptButton,
+      acceptText
     );
   }
 
@@ -6194,9 +6559,7 @@ class VillageScene extends Phaser.Scene {
     if (
       !this.npcDialogObjects
     ) {
-      this.npcDialogOpen =
-        false;
-
+      this.npcDialogOpen = false;
       return;
     }
 
@@ -6208,11 +6571,21 @@ class VillageScene extends Phaser.Scene {
       }
     );
 
-    this.npcDialogObjects =
-      [];
+    this.npcDialogObjects = [];
+    this.npcDialogOpen = false;
 
-    this.npcDialogOpen =
-      false;
+    // HUD hanya kembali ketika benar-benar kembali ke exploration.
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.questCompleteOpen
+    );
+
+    this.setGameplayHUDVisible(
+      shouldShowHUD
+    );
   }
 
   // ==================================================
@@ -6298,6 +6671,19 @@ class VillageScene extends Phaser.Scene {
       barBackground,
       barFill
     );
+
+    // Quest dapat ter-update ketika battle / chest quiz / modal lain berlangsung.
+    // Jangan biarkan quest panel muncul kembali di atas UI fokus penuh.
+    const gameplayHUDShouldBeVisible = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.inventoryOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen
+    );
+
+    this.setGameplayHUDVisible(gameplayHUDShouldBeVisible);
   }
 
   // ==================================================
@@ -6428,153 +6814,188 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // QUEST COMPLETE
+  // QUEST COMPLETE — STEP 2D.9 REWARD POLISH
   // ==================================================
 
   showQuestComplete(
     titleText,
     rewardText
   ) {
-    this.questCompleteOpen =
-      true;
+    this.questCompleteOpen = true;
 
-    this.questCompleteObjects =
-      [];
+    // Reward screen adalah modal penuh. HUD eksplorasi tidak boleh
+    // bersaing dengan informasi reward.
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
 
-    const overlay =
-      this.add.rectangle(
-        400,
-        300,
-        800,
-        600,
-        0x000000,
-        0.65
-      );
+    this.questCompleteObjects = [];
 
-    overlay.setDepth(500);
+    const overlay = this.add
+      .rectangle(400, 300, 800, 600, 0x050b14, 0.82)
+      .setDepth(500);
 
-    const panel =
-      this.add.rectangle(
-        400,
-        300,
-        550,
-        340,
-        0xffffff
-      );
+    const panel = this.add
+      .rectangle(400, 305, 590, 370, 0x10233f, 0.99)
+      .setDepth(501)
+      .setStrokeStyle(3, 0xd8b43f, 1);
 
-    panel.setDepth(501);
+    const topGlow = this.add
+      .rectangle(400, 123, 590, 5, 0xf6d365, 1)
+      .setDepth(502);
 
-    const title =
-      this.add
-        .text(
-          400,
-          195,
-          "QUEST COMPLETE!",
-          {
-            fontSize: "32px",
-            color: "#D4AF37",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
+    const seal = this.add
+      .circle(400, 170, 36, 0xd8b43f, 1)
+      .setDepth(502)
+      .setStrokeStyle(3, 0xffe59a, 1);
 
-    title.setDepth(502);
+    const check = this.add
+      .text(400, 170, "✓", {
+        fontSize: "34px",
+        color: "#0B1728",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    const quest =
-      this.add
-        .text(
-          400,
-          250,
-          titleText,
-          {
-            fontSize: "22px",
-            color: "#1A365D",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
+    const eyebrow = this.add
+      .text(400, 218, "QUEST CLEARED", {
+        fontSize: "12px",
+        color: "#F6D365",
+        fontStyle: "bold",
+        letterSpacing: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    quest.setDepth(502);
+    const title = this.add
+      .text(400, 247, "QUEST COMPLETE!", {
+        fontSize: "28px",
+        color: "#FFF7D6",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    const reward =
-      this.add
-        .text(
-          400,
-          315,
-          rewardText,
-          {
-            fontSize: "19px",
-            color: "#2D3748",
-            align: "center",
+    const questCard = this.add
+      .rectangle(400, 295, 470, 48, 0x0a172a, 0.96)
+      .setDepth(502)
+      .setStrokeStyle(1, 0x527aa8, 0.9);
 
-            wordWrap: {
-              width: 450,
-            },
-          }
-        )
-        .setOrigin(0.5);
+    const quest = this.add
+      .text(400, 295, titleText, {
+        fontSize: "17px",
+        color: "#DCEBFF",
+        fontStyle: "bold",
+        align: "center",
+        wordWrap: { width: 430 },
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    reward.setDepth(502);
+    const rewardLabel = this.add
+      .text(400, 340, "REWARDS", {
+        fontSize: "12px",
+        color: "#F6D365",
+        fontStyle: "bold",
+        letterSpacing: 1,
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    const button =
-      this.add.rectangle(
-        400,
-        420,
-        200,
-        50,
-        0x1a365d
-      );
+    const rewardCard = this.add
+      .rectangle(400, 389, 470, 72, 0x142b4a, 0.96)
+      .setDepth(502)
+      .setStrokeStyle(1, 0xd8b43f, 0.72);
 
-    button.setDepth(502);
+    const reward = this.add
+      .text(400, 389, rewardText, {
+        fontSize: "15px",
+        color: "#F3F7FF",
+        fontStyle: "bold",
+        align: "center",
+        lineSpacing: 5,
+        wordWrap: { width: 430 },
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
-    button.setInteractive({
-      useHandCursor: true,
-    });
+    const button = this.add
+      .rectangle(400, 462, 220, 48, 0xd8b43f, 1)
+      .setDepth(502)
+      .setStrokeStyle(2, 0xffe59a, 1)
+      .setInteractive({ useHandCursor: true });
 
-    const buttonText =
-      this.add
-        .text(
-          400,
-          420,
-          "LANJUT",
-          {
-            fontSize: "18px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    buttonText.setDepth(503);
+    const buttonText = this.add
+      .text(400, 462, "LANJUTKAN", {
+        fontSize: "15px",
+        color: "#0B1728",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(503);
 
     this.questCompleteObjects.push(
       overlay,
       panel,
+      topGlow,
+      seal,
+      check,
+      eyebrow,
       title,
+      questCard,
       quest,
+      rewardLabel,
+      rewardCard,
       reward,
       button,
       buttonText
     );
 
-    button.on(
-      "pointerdown",
-      () => {
-        this.questCompleteObjects.forEach(
-          (object) => {
-            if (object) {
-              object.destroy();
-            }
-          }
-        );
+    // Sedikit entrance animation agar reward terasa sebagai momen penting.
+    panel.setScale(0.96);
+    panel.setAlpha(0);
+    this.tweens.add({
+      targets: panel,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 180,
+      ease: "Back.easeOut",
+    });
 
-        this.questCompleteObjects =
-          [];
+    this.tweens.add({
+      targets: seal,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 700,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
 
-        this.questCompleteOpen =
-          false;
-      }
-    );
+    button.on("pointerover", () => {
+      button.setFillStyle(0xf0c94b);
+    });
+
+    button.on("pointerout", () => {
+      button.setFillStyle(0xd8b43f);
+    });
+
+    button.on("pointerdown", () => {
+      this.questCompleteObjects.forEach((object) => {
+        if (object) {
+          object.destroy();
+        }
+      });
+
+      this.questCompleteObjects = [];
+      this.questCompleteOpen = false;
+
+      this.updateHUD();
+      this.setGameplayHUDVisible(true);
+    });
   }
 
   // ==================================================
@@ -6746,347 +7167,408 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ==================================================
-  // SHOW INVENTORY
+  // SHOW INVENTORY — STEP 2D.7 RPG INVENTORY
   // ==================================================
 
   showInventory() {
-    this.inventoryOpen =
-      true;
+    this.inventoryOpen = true;
+    this.inventoryObjects = [];
 
-    this.inventoryObjects =
-      [];
+    // Inventory adalah layar fokus penuh.
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
 
-    const overlay =
-      this.add.rectangle(
-        400,
-        300,
-        800,
-        600,
-        0x000000,
-        0.65
-      );
+    const depth = 3000;
 
-    overlay.setDepth(300);
+    const addObject = (object) => {
+      if (object) {
+        object.setScrollFactor?.(0);
+        this.inventoryObjects.push(object);
+      }
+      return object;
+    };
 
-    const panel =
-      this.add.rectangle(
-        400,
-        300,
-        680,
-        510,
-        0xffffff
-      );
+    // --------------------------------------------------
+    // OVERLAY + MAIN PANEL
+    // --------------------------------------------------
 
-    panel.setDepth(301);
-
-    const title =
+    addObject(
       this.add
-        .text(
-          400,
-          65,
-          "INVENTORY",
-          {
-            fontSize: "32px",
-            color: "#1A365D",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    title.setDepth(302);
-
-    const stats =
-      this.add
-        .text(
-          400,
-          110,
-          `LVL ${this.playerData.level}   XP: ${this.playerData.xp}   GOLD: ${this.playerData.gold}`,
-          {
-            fontSize: "17px",
-            color: "#2D3748",
-            fontStyle: "bold",
-          }
-        )
-        .setOrigin(0.5);
-
-    stats.setDepth(302);
-
-    this.inventoryObjects.push(
-      overlay,
-      panel,
-      title,
-      stats
+        .rectangle(400, 300, 800, 600, 0x050b14, 0.82)
+        .setDepth(depth)
     );
 
-    // ==================================================
-    // EMPTY
-    // ==================================================
+    addObject(
+      this.add
+        .rectangle(400, 300, 720, 520, 0x0d1b2f, 0.98)
+        .setDepth(depth + 1)
+        .setStrokeStyle(3, 0xd4af37, 0.95)
+    );
 
-    if (
-      this.playerData.inventory
-        .length === 0
-    ) {
-      const empty =
+    // --------------------------------------------------
+    // HEADER
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(75, 58, "INVENTORY", {
+          fontSize: "28px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          stroke: "#07111F",
+          strokeThickness: 3,
+        })
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(75, 91, "Perlengkapan Petualang Nahwu", {
+          fontSize: "12px",
+          color: "#9FB6D6",
+        })
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(
+          725,
+          67,
+          `LVL ${this.playerData.level}   •   XP ${this.playerData.xp}   •   GOLD ${this.playerData.gold}`,
+          {
+            fontSize: "13px",
+            color: "#FFFFFF",
+            fontStyle: "bold",
+          }
+        )
+        .setOrigin(1, 0.5)
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 117, 650, 2, 0x31577d, 0.9)
+        .setDepth(depth + 2)
+    );
+
+    // --------------------------------------------------
+    // LEFT: EQUIPMENT
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(92, 138, "EQUIPMENT", {
+          fontSize: "15px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 2)
+    );
+
+    const equipmentTypes = [
+      { type: "Weapon", label: "WEAPON", fallback: "🗡️" },
+      { type: "Armor", label: "ARMOR", fallback: "🛡️" },
+      { type: "Accessory", label: "ACCESSORY", fallback: "💍" },
+    ];
+
+    equipmentTypes.forEach((slot, index) => {
+      const y = 190 + index * 92;
+      const equippedId = this.playerData.equipped?.[slot.type];
+      const equippedItem = this.playerData.inventory.find(
+        (item) => item && item.id === equippedId
+      );
+
+      addObject(
+        this.add
+          .rectangle(180, y, 210, 74, 0x132844, 1)
+          .setDepth(depth + 2)
+          .setStrokeStyle(
+            2,
+            equippedItem ? 0xd4af37 : 0x31577d,
+            equippedItem ? 0.9 : 0.7
+          )
+      );
+
+      addObject(
+        this.add
+          .text(94, y - 26, slot.label, {
+            fontSize: "10px",
+            color: "#89A7CC",
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 3)
+      );
+
+      addObject(
+        this.add
+          .text(105, y + 7, equippedItem?.icon || slot.fallback, {
+            fontSize: "29px",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+
+      addObject(
         this.add
           .text(
-            400,
-            300,
-            "Inventory masih kosong.",
+            135,
+            y - 2,
+            equippedItem ? equippedItem.name : "Belum digunakan",
             {
-              fontSize: "22px",
-              color: "#666666",
+              fontSize: equippedItem ? "12px" : "11px",
+              color: equippedItem
+                ? this.getRarityColor(equippedItem.rarity)
+                : "#7890AD",
+              fontStyle: equippedItem ? "bold" : "normal",
+              wordWrap: { width: 130 },
             }
           )
-          .setOrigin(0.5);
-
-      empty.setDepth(302);
-
-      this.inventoryObjects.push(
-        empty
+          .setDepth(depth + 3)
       );
-    }
 
-    // ==================================================
-    // ITEMS
-    // ==================================================
-
-    this.playerData.inventory.forEach(
-      (
-        item,
-        index
-      ) => {
-        const y =
-          185 +
-          index * 105;
-
-        const card =
-          this.add.rectangle(
-            400,
-            y,
-            610,
-            85,
-            0xeaf2ff
-          );
-
-        card.setDepth(302);
-
-        const icon =
+      if (equippedItem) {
+        addObject(
           this.add
-            .text(
-              150,
-              y,
-              item.icon ||
-                "🗡️",
-              {
-                fontSize: "36px",
-              }
-            )
-            .setOrigin(0.5);
-
-        icon.setDepth(303);
-
-        const rarityColor =
-          this.getRarityColor(
-            item.rarity
-          );
-
-        const itemName =
-          this.add.text(
-            200,
-            y - 20,
-            item.name,
-            {
-              fontSize: "18px",
-              color: rarityColor,
+            .text(135, y + 22, String(equippedItem.rarity).toUpperCase(), {
+              fontSize: "9px",
+              color: this.getRarityColor(equippedItem.rarity),
               fontStyle: "bold",
-            }
-          );
-
-        itemName.setDepth(303);
-
-        const itemType =
-          this.add.text(
-            200,
-            y + 2,
-            item.type,
-            {
-              fontSize: "12px",
-              color: "#4A5568",
-            }
-          );
-
-        itemType.setDepth(303);
-
-        const rarity =
-          this.add.text(
-            200,
-            y + 18,
-            String(
-              item.rarity ||
-                "Common"
-            ).toUpperCase(),
-            {
-              fontSize: "12px",
-              color: rarityColor,
-              fontStyle: "bold",
-            }
-          );
-
-        rarity.setDepth(303);
-
-        const description =
-          this.add.text(
-            350,
-            y - 10,
-            item.description ||
-              "Tidak ada deskripsi.",
-            {
-              fontSize: "11px",
-              color: "#2D3748",
-              wordWrap: {
-                width: 160,
-              },
-            }
-          );
-
-        description.setDepth(303);
-
-        const equipped =
-          this.isItemEquipped(
-            item
-          );
-
-        const equipButton =
-          this.add.rectangle(
-            650,
-            y,
-            100,
-            34,
-            equipped
-              ? 0x3182ce
-              : 0x1a365d
-          );
-
-        equipButton.setDepth(303);
-
-        equipButton.setInteractive({
-          useHandCursor: true,
-        });
-
-        const equipText =
-          this.add
-            .text(
-              650,
-              y,
-              equipped
-                ? "EQUIPPED"
-                : "EQUIP",
-              {
-                fontSize: "11px",
-                color: "#ffffff",
-                fontStyle: "bold",
-              }
-            )
-            .setOrigin(0.5);
-
-        equipText.setDepth(304);
-
-        equipButton.on(
-          "pointerover",
-          () => {
-            equipButton.setFillStyle(
-              equipped
-                ? 0x2b6cb0
-                : 0x3182ce
-            );
-          }
-        );
-
-        equipButton.on(
-          "pointerout",
-          () => {
-            equipButton.setFillStyle(
-              equipped
-                ? 0x3182ce
-                : 0x1a365d
-            );
-          }
-        );
-
-        equipButton.on(
-          "pointerdown",
-          () => {
-            if (equipped) {
-              this.unequipItem(
-                item
-              );
-            } else {
-              this.equipItem(
-                index
-              );
-            }
-          }
-        );
-
-        this.inventoryObjects.push(
-          card,
-          icon,
-          itemName,
-          itemType,
-          rarity,
-          description,
-          equipButton,
-          equipText
+            })
+            .setDepth(depth + 3)
         );
       }
-    );
-
-    // ==================================================
-    // CLOSE
-    // ==================================================
-
-    const closeButton =
-      this.add.rectangle(
-        400,
-        550,
-        220,
-        45,
-        0x1a365d
-      );
-
-    closeButton.setDepth(302);
-
-    closeButton.setInteractive({
-      useHandCursor: true,
     });
 
-    const closeText =
+    // TIP CARD dibuat lebih compact dan diberi napas dari slot equipment.
+    addObject(
+      this.add
+        .rectangle(180, 462, 210, 72, 0x0a1628, 0.92)
+        .setDepth(depth + 2)
+        .setStrokeStyle(1, 0x31577d, 0.75)
+    );
+
+    addObject(
+      this.add
+        .text(92, 438, "TIP", {
+          fontSize: "10px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+          letterSpacing: 1,
+        })
+        .setDepth(depth + 3)
+    );
+
+    addObject(
       this.add
         .text(
-          400,
-          550,
-          "TUTUP [ I ]",
+          92,
+          456,
+          "Equip item untuk mendapat bonus saat\nbelajar dan bertarung.",
           {
-            fontSize: "18px",
-            color: "#ffffff",
-            fontStyle: "bold",
+            fontSize: "9px",
+            color: "#AFC4DE",
+            lineSpacing: 4,
+            wordWrap: { width: 170 },
           }
         )
-        .setOrigin(0.5);
-
-    closeText.setDepth(303);
-
-    this.inventoryObjects.push(
-      closeButton,
-      closeText
+        .setDepth(depth + 3)
     );
 
-    closeButton.on(
-      "pointerdown",
-      () => {
-        this.closeInventory();
-      }
+    // --------------------------------------------------
+    // RIGHT: ITEM BAG
+    // --------------------------------------------------
+
+    addObject(
+      this.add
+        .text(310, 138, `ITEM BAG  ${this.playerData.inventory.length}`, {
+          fontSize: "15px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 2)
     );
+
+    if (this.playerData.inventory.length === 0) {
+      addObject(
+        this.add
+          .rectangle(515, 310, 390, 270, 0x10233f, 0.75)
+          .setDepth(depth + 2)
+          .setStrokeStyle(1, 0x31577d, 0.75)
+      );
+
+      addObject(
+        this.add
+          .text(515, 290, "🎒", { fontSize: "44px" })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+
+      addObject(
+        this.add
+          .text(515, 340, "Inventory masih kosong", {
+            fontSize: "16px",
+            color: "#DCEBFF",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 3)
+      );
+    } else {
+      this.playerData.inventory.forEach((item, index) => {
+        const y = 185 + index * 86;
+        const rarityColor = this.getRarityColor(item.rarity);
+        const rarityNumber = parseInt(rarityColor.replace("#", ""), 16);
+        const equipped = this.isItemEquipped(item);
+
+        const card = addObject(
+          this.add
+            .rectangle(515, y, 390, 72, 0x132844, 1)
+            .setDepth(depth + 2)
+            .setStrokeStyle(2, rarityNumber, equipped ? 1 : 0.65)
+        );
+
+        addObject(
+          this.add
+            .text(340, y, item.icon || "🎒", {
+              fontSize: "30px",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y - 24, item.name, {
+              fontSize: "13px",
+              color: rarityColor,
+              fontStyle: "bold",
+            })
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y - 4, `${item.type}  •  ${String(item.rarity).toUpperCase()}`, {
+              fontSize: "9px",
+              color: "#91AAC8",
+              fontStyle: "bold",
+            })
+            .setDepth(depth + 3)
+        );
+
+        addObject(
+          this.add
+            .text(370, y + 15, item.description || "Tidak ada deskripsi.", {
+              fontSize: "9px",
+              color: "#D6E3F4",
+              wordWrap: { width: 205 },
+            })
+            .setDepth(depth + 3)
+        );
+
+        const equipButton = addObject(
+          this.add
+            .rectangle(
+              675,
+              y,
+              82,
+              30,
+              equipped ? 0x8b6b13 : 0x1d5f91,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, equipped ? 0xffe58a : 0x63a7d8, 0.9)
+            .setInteractive({ useHandCursor: true })
+        );
+
+        const equipText = addObject(
+          this.add
+            .text(675, y, equipped ? "UNEQUIP" : "EQUIP", {
+              fontSize: "9px",
+              color: "#FFFFFF",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        equipButton.on("pointerover", () => {
+          equipButton.setFillStyle(equipped ? 0xa47c17 : 0x2b78ad);
+          card.setFillStyle(0x183251, 1);
+        });
+
+        equipButton.on("pointerout", () => {
+          equipButton.setFillStyle(equipped ? 0x8b6b13 : 0x1d5f91);
+          card.setFillStyle(0x132844, 1);
+        });
+
+        equipButton.on("pointerdown", () => {
+          if (equipped) {
+            this.unequipItem(item);
+          } else {
+            this.equipItem(index);
+          }
+        });
+
+        // Agar text tidak menyerap klik tombol.
+        equipText.disableInteractive?.();
+      });
+    }
+
+    // --------------------------------------------------
+    // FOOTER / CLOSE
+    // --------------------------------------------------
+
+    // Divider memisahkan isi inventory dan action footer.
+    addObject(
+      this.add
+        .rectangle(400, 510, 650, 1, 0x31577d, 0.7)
+        .setDepth(depth + 2)
+    );
+
+    addObject(
+      this.add
+        .text(75, 528, "Klik EQUIP untuk mengganti perlengkapan.", {
+          fontSize: "9px",
+          color: "#7890AD",
+        })
+        .setOrigin(0, 0.5)
+        .setDepth(depth + 3)
+    );
+
+    const closeButton = addObject(
+      this.add
+        .rectangle(660, 528, 132, 32, 0x1a365d, 1)
+        .setDepth(depth + 3)
+        .setStrokeStyle(2, 0xd4af37, 0.9)
+        .setInteractive({ useHandCursor: true })
+    );
+
+    const closeText = addObject(
+      this.add
+        .text(660, 528, "TUTUP   [ I ]", {
+          fontSize: "10px",
+          color: "#FFFFFF",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+    );
+
+    closeButton.on("pointerover", () => {
+      closeButton.setFillStyle(0x244a73, 1);
+      closeText.setColor("#FFE58A");
+    });
+
+    closeButton.on("pointerout", () => {
+      closeButton.setFillStyle(0x1a365d, 1);
+      closeText.setColor("#FFFFFF");
+    });
+
+    closeButton.on("pointerdown", () => {
+      this.closeInventory();
+    });
   }
 
   // ==================================================
@@ -7094,29 +7576,31 @@ class VillageScene extends Phaser.Scene {
   // ==================================================
 
   closeInventory() {
-    if (
-      !this.inventoryObjects
-    ) {
-      this.inventoryOpen =
-        false;
-
+    if (!this.inventoryObjects) {
+      this.inventoryOpen = false;
       return;
     }
 
-    this.inventoryObjects.forEach(
-      (object) => {
-        if (object) {
-          object.destroy();
-        }
+    this.inventoryObjects.forEach((object) => {
+      if (object && object.active) {
+        object.destroy();
       }
+    });
+
+    this.inventoryObjects = [];
+    this.inventoryOpen = false;
+
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.isQuizOpen ||
+      this.npcDialogOpen ||
+      this.questCompleteOpen
     );
 
-    this.inventoryObjects =
-      [];
-
-    this.inventoryOpen =
-      false;
+    this.setGameplayHUDVisible(shouldShowHUD);
   }
+
 }
 
 export default VillageScene;

@@ -161,7 +161,13 @@ class ForestScene extends Phaser.Scene {
 
     this.forestQuest = this.registry.get("forestQuest") || null;
     this.forestQuestObjects = [];
+    this.forestQuestDialogObjects = [];
     this.forestQuestDialogOpen = false;
+
+    // Step 2D.9 — reward modal Forest.
+    this.forestQuestCompleteOpen = false;
+    this.forestQuestCompleteObjects = [];
+    this.pendingForestQuestCompletion = null;
 
     this.xpNeeded = 200;
 
@@ -431,22 +437,98 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(31);
 
-    this.interactText = this.add
-      .text(400, 545, "", {
-        fontSize: "18px",
-        color: "#ffffff",
-        backgroundColor: "#1A365D",
-        padding: {
-          left: 15,
-          right: 15,
-          top: 10,
-          bottom: 10,
-        },
-      })
-      .setOrigin(0.5)
-      .setDepth(100);
+    this.createInteractionPromptUI();
+  }
 
-    this.interactText.setVisible(false);
+  // ==================================================
+  // MODERN INTERACTION PROMPT
+  // ==================================================
+
+  createInteractionPromptUI() {
+    this.interactionPrompt = this.add.container(400, 548);
+    this.interactionPrompt
+      .setDepth(1500)
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x111827, 0.94);
+    panel.fillRoundedRect(-176, -24, 352, 48, 14);
+    panel.lineStyle(2, 0xf6c453, 0.9);
+    panel.strokeRoundedRect(-176, -24, 352, 48, 14);
+
+    const keyCap = this.add.graphics();
+    keyCap.fillStyle(0xf8fafc, 1);
+    keyCap.fillRoundedRect(-158, -16, 34, 32, 8);
+    keyCap.lineStyle(2, 0xf6c453, 1);
+    keyCap.strokeRoundedRect(-158, -16, 34, 32, 8);
+
+    this.interactKeyText = this.add
+      .text(-141, 0, "E", {
+        fontSize: "16px",
+        color: "#111827",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.interactText = this.add
+      .text(-112, 0, "", {
+        fontSize: "15px",
+        color: "#F8FAFC",
+        fontStyle: "bold",
+      })
+      .setOrigin(0, 0.5);
+
+    this.interactionPrompt.add([
+      panel,
+      keyCap,
+      this.interactKeyText,
+      this.interactText,
+    ]);
+  }
+
+  showInteractionPrompt(message) {
+    if (!this.interactionPrompt || !this.interactText) {
+      return;
+    }
+
+    // Jangan tampilkan prompt interaksi ketika UI modal sedang terbuka.
+    if (
+      this.forestQuestDialogOpen ||
+      this.forestQuestCompleteOpen ||
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.skillQuestionOpen ||
+      this.skillMenuOpen
+    ) {
+      this.hideInteractionPrompt();
+      return;
+    }
+
+    const wasVisible = this.interactionPrompt.visible;
+    this.interactText.setText(message);
+    this.interactionPrompt.setVisible(true);
+
+    if (!wasVisible) {
+      this.interactionPrompt.setAlpha(0);
+      this.interactionPrompt.setScale(0.96);
+
+      this.tweens.killTweensOf(this.interactionPrompt);
+      this.tweens.add({
+        targets: this.interactionPrompt,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 120,
+        ease: "Quad.easeOut",
+      });
+    }
+  }
+
+  hideInteractionPrompt() {
+    if (this.interactionPrompt) {
+      this.interactionPrompt.setVisible(false);
+    }
   }
 
   // ==================================================
@@ -542,142 +624,132 @@ class ForestScene extends Phaser.Scene {
     }
 
     this.forestQuestDialogOpen = true;
-    this.forestQuestObjects = [];
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
+    this.forestQuestDialogObjects = [];
 
-    const overlay = this.add.rectangle(
-      400,
-      300,
-      800,
-      600,
-      0x000000,
-      0.7
-    );
+    const overlay = this.add
+      .rectangle(400, 300, 800, 600, 0x050b14, 0.72)
+      .setDepth(400);
 
-    overlay.setDepth(400);
+    const panel = this.add
+      .rectangle(400, 420, 720, 280, 0x10233f, 0.98)
+      .setDepth(401)
+      .setStrokeStyle(3, 0x70a36b, 0.95);
 
-    const panel = this.add.rectangle(
-      400,
-      300,
-      620,
-      380,
-      0xffffff
-    );
+    const portraitBox = this.add
+      .rectangle(125, 416, 118, 170, 0x0a172a, 1)
+      .setDepth(402)
+      .setStrokeStyle(2, 0x4f7f58, 1);
 
-    panel.setDepth(401);
+    const portrait = this.add
+      .image(125, 416, "forestGuardianPixel")
+      .setDisplaySize(104, 136)
+      .setDepth(403);
+
+    const speakerLabel = this.add
+      .text(200, 305, "FOREST QUEST", {
+        fontSize: "11px",
+        color: "#9FD29B",
+        fontStyle: "bold",
+      })
+      .setDepth(403);
 
     const title = this.add
-      .text(
-        400,
-        95,
-        "🌳 PENJAGA ISIM",
-        {
-          fontSize: "30px",
-          color: "#1A365D",
-          fontStyle: "bold",
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(402);
+      .text(200, 328, "Penjaga Isim", {
+        fontSize: "23px",
+        color: "#E8FFE6",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 3,
+      })
+      .setDepth(403);
 
     const message = this.add
       .text(
-        400,
-        165,
-        "Forest of Isim mulai dipenuhi monster.\n\nKalahkan 2 monster untuk membersihkan\nhutan dan buktikan kemampuan Nahwu-mu!",
+        200,
+        371,
+        "Forest of Isim mulai dipenuhi monster.\n" +
+          "Kalahkan 2 monster untuk membersihkan hutan\n" +
+          "dan buktikan kemampuan Nahwu-mu!",
         {
-          fontSize: "18px",
-          color: "#2D3748",
-          align: "center",
-          wordWrap: {
-            width: 520,
-          },
+          fontSize: "16px",
+          color: "#EAF3FF",
+          lineSpacing: 6,
+          wordWrap: { width: 500 },
         }
       )
-      .setOrigin(0.5)
-      .setDepth(402);
+      .setDepth(403);
 
     const currentProgress =
       this.forestQuest && !this.forestQuest.completed
-        ? `Progress saat ini: ${this.forestQuest.progress} / ${this.forestQuest.requiredProgress}`
+        ? `Progress  •  ${this.forestQuest.progress} / ${this.forestQuest.requiredProgress} monster`
         : this.forestQuest && this.forestQuest.completed
-        ? "Quest sudah selesai."
+        ? "Quest selesai  •  Hutan sudah lebih aman."
         : "Quest belum diambil.";
 
+    const progressCard = this.add
+      .rectangle(450, 475, 490, 48, 0x0a172a, 0.92)
+      .setDepth(402)
+      .setStrokeStyle(1, 0x4f7f58, 0.85);
+
     const progress = this.add
-      .text(
-        400,
-        245,
-        currentProgress,
-        {
-          fontSize: "17px",
-          color: "#718096",
-          fontStyle: "bold",
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(402);
+      .text(220, 475, currentProgress, {
+        fontSize: "14px",
+        color: "#CFE8D0",
+        fontStyle: "bold",
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(403);
 
-    const acceptButton = this.add.rectangle(
-      400,
-      335,
-      240,
-      55,
-      0xd4af37
-    );
-
-    acceptButton.setDepth(402);
-    acceptButton.setInteractive({
-      useHandCursor: true,
-    });
+    const acceptButton = this.add
+      .rectangle(570, 545, 190, 44, 0x70a36b, 1)
+      .setDepth(405)
+      .setStrokeStyle(2, 0xb9e6b5, 1)
+      .setInteractive({ useHandCursor: true });
 
     const acceptText = this.add
       .text(
-        400,
-        335,
+        570,
+        545,
         this.forestQuest && !this.forestQuest.completed
           ? "LIHAT QUEST"
+          : this.forestQuest && this.forestQuest.completed
+          ? "SELESAI"
           : "TERIMA QUEST",
         {
-          fontSize: "17px",
-          color: "#1A365D",
+          fontSize: "14px",
+          color: "#07111F",
           fontStyle: "bold",
         }
       )
       .setOrigin(0.5)
-      .setDepth(403);
+      .setDepth(406);
 
-    const closeButton = this.add.rectangle(
-      400,
-      410,
-      200,
-      42,
-      0x1A365D
-    );
-
-    closeButton.setDepth(402);
-    closeButton.setInteractive({
-      useHandCursor: true,
-    });
+    const closeButton = this.add
+      .rectangle(350, 545, 170, 44, 0x183451, 1)
+      .setDepth(405)
+      .setStrokeStyle(1, 0x426b98, 1)
+      .setInteractive({ useHandCursor: true });
 
     const closeText = this.add
-      .text(
-        400,
-        410,
-        "TUTUP",
-        {
-          fontSize: "15px",
-          color: "#ffffff",
-          fontStyle: "bold",
-        }
-      )
+      .text(350, 545, "TUTUP", {
+        fontSize: "14px",
+        color: "#EAF3FF",
+        fontStyle: "bold",
+      })
       .setOrigin(0.5)
-      .setDepth(403);
+      .setDepth(406);
 
-    this.forestQuestObjects.push(
+    this.forestQuestDialogObjects.push(
       overlay,
       panel,
+      portraitBox,
+      portrait,
+      speakerLabel,
       title,
       message,
+      progressCard,
       progress,
       acceptButton,
       acceptText,
@@ -685,11 +757,11 @@ class ForestScene extends Phaser.Scene {
       closeText
     );
 
+    acceptButton.on("pointerover", () => acceptButton.setFillStyle(0x8bc486));
+    acceptButton.on("pointerout", () => acceptButton.setFillStyle(0x70a36b));
+
     acceptButton.on("pointerdown", () => {
-      if (
-        this.forestQuest &&
-        this.forestQuest.completed
-      ) {
+      if (this.forestQuest && this.forestQuest.completed) {
         this.closeForestQuestDialog();
         return;
       }
@@ -701,9 +773,9 @@ class ForestScene extends Phaser.Scene {
       }
     });
 
-    closeButton.on("pointerdown", () => {
-      this.closeForestQuestDialog();
-    });
+    closeButton.on("pointerover", () => closeButton.setFillStyle(0x24598a));
+    closeButton.on("pointerout", () => closeButton.setFillStyle(0x183451));
+    closeButton.on("pointerdown", () => this.closeForestQuestDialog());
   }
 
   // ==================================================
@@ -740,18 +812,26 @@ class ForestScene extends Phaser.Scene {
   // ==================================================
 
   closeForestQuestDialog() {
-    if (this.forestQuestObjects) {
-      this.forestQuestObjects.forEach(
-        (object) => {
-          if (object) {
-            object.destroy();
-          }
+    if (this.forestQuestDialogObjects) {
+      this.forestQuestDialogObjects.forEach((object) => {
+        if (object) {
+          object.destroy();
         }
-      );
+      });
     }
 
-    this.forestQuestObjects = [];
+    this.forestQuestDialogObjects = [];
     this.forestQuestDialogOpen = false;
+
+    const shouldShowHUD = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.forestQuestCompleteOpen ||
+      this.skillMenuOpen ||
+      this.skillQuestionOpen
+    );
+
+    this.setGameplayHUDVisible(shouldShowHUD);
   }
 
   // ==================================================
@@ -837,6 +917,18 @@ class ForestScene extends Phaser.Scene {
       barBackground,
       barFill
     );
+
+    // HUD eksplorasi tidak boleh muncul di atas battle atau dialog quest.
+    const gameplayHUDShouldBeVisible = !(
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.forestQuestDialogOpen ||
+      this.forestQuestCompleteOpen ||
+      this.skillMenuOpen ||
+      this.skillQuestionOpen
+    );
+
+    this.setGameplayHUDVisible(gameplayHUDShouldBeVisible);
   }
 
   // ==================================================
@@ -880,13 +972,16 @@ class ForestScene extends Phaser.Scene {
     ) {
       this.forestQuest.completed = true;
 
-      this.playerData.gold =
-        Number(this.playerData.gold) +
-        Number(this.forestQuest.reward.gold);
+      const xpResult = this.addXP(
+        Number(this.forestQuest.reward.xp) || 0,
+        "isim"
+      );
 
-      this.playerData.xp =
-        Number(this.playerData.xp) +
-        Number(this.forestQuest.reward.xp);
+      const goldReward =
+        Number(this.forestQuest.reward.gold) || 0;
+
+      this.playerData.gold =
+        Number(this.playerData.gold) + goldReward;
 
       this.registry.set(
         "playerData",
@@ -894,6 +989,26 @@ class ForestScene extends Phaser.Scene {
       );
 
       this.updateHUD();
+
+      let rewardText =
+        `+${xpResult.finalXP} XP\n` +
+        `+${goldReward} GOLD`;
+
+      if (xpResult.bonusXP > 0) {
+        rewardText +=
+          `\nEquipment Bonus: +${xpResult.bonusXP} XP`;
+      }
+
+      if (xpResult.leveledUp) {
+        rewardText += "\nLEVEL UP!";
+      }
+
+      // Battle result harus selesai dulu. Setelah player menekan LANJUT,
+      // reward quest Forest baru ditampilkan agar modal tidak menumpuk.
+      this.pendingForestQuestCompletion = {
+        title: this.forestQuest.title,
+        rewardText,
+      };
     }
 
     this.registry.set(
@@ -902,6 +1017,164 @@ class ForestScene extends Phaser.Scene {
     );
 
     this.showForestQuestHUD();
+  }
+
+  // ==================================================
+  // FOREST QUEST COMPLETE — STEP 2D.9
+  // ==================================================
+
+  showForestQuestComplete(titleText, rewardText) {
+    this.forestQuestCompleteOpen = true;
+    this.setGameplayHUDVisible(false);
+    this.hideInteractionPrompt();
+    this.forestQuestCompleteObjects = [];
+
+    const overlay = this.add
+      .rectangle(400, 300, 800, 600, 0x04100a, 0.84)
+      .setDepth(760);
+
+    const panel = this.add
+      .rectangle(400, 305, 590, 370, 0x10233f, 0.99)
+      .setDepth(761)
+      .setStrokeStyle(3, 0x70a36b, 1);
+
+    const topGlow = this.add
+      .rectangle(400, 123, 590, 5, 0x9fd29b, 1)
+      .setDepth(762);
+
+    const seal = this.add
+      .circle(400, 170, 36, 0x70a36b, 1)
+      .setDepth(762)
+      .setStrokeStyle(3, 0xb9e6b5, 1);
+
+    const check = this.add
+      .text(400, 170, "✓", {
+        fontSize: "34px",
+        color: "#07111F",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const eyebrow = this.add
+      .text(400, 218, "FOREST QUEST CLEARED", {
+        fontSize: "12px",
+        color: "#9FD29B",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const title = this.add
+      .text(400, 247, "HUTAN BERHASIL DIBERSIHKAN!", {
+        fontSize: "24px",
+        color: "#E8FFE6",
+        fontStyle: "bold",
+        stroke: "#07111F",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const questCard = this.add
+      .rectangle(400, 295, 470, 48, 0x0a172a, 0.96)
+      .setDepth(762)
+      .setStrokeStyle(1, 0x4f7f58, 0.95);
+
+    const quest = this.add
+      .text(400, 295, titleText, {
+        fontSize: "17px",
+        color: "#CFE8D0",
+        fontStyle: "bold",
+        align: "center",
+        wordWrap: { width: 430 },
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const rewardLabel = this.add
+      .text(400, 340, "REWARDS", {
+        fontSize: "12px",
+        color: "#9FD29B",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const rewardCard = this.add
+      .rectangle(400, 389, 470, 72, 0x142b4a, 0.96)
+      .setDepth(762)
+      .setStrokeStyle(1, 0x70a36b, 0.9);
+
+    const reward = this.add
+      .text(400, 389, rewardText, {
+        fontSize: "15px",
+        color: "#F3F7FF",
+        fontStyle: "bold",
+        align: "center",
+        lineSpacing: 5,
+        wordWrap: { width: 430 },
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    const button = this.add
+      .rectangle(400, 462, 240, 48, 0x70a36b, 1)
+      .setDepth(762)
+      .setStrokeStyle(2, 0xb9e6b5, 1)
+      .setInteractive({ useHandCursor: true });
+
+    const buttonText = this.add
+      .text(400, 462, "KEMBALI KE HUTAN", {
+        fontSize: "14px",
+        color: "#07111F",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(763);
+
+    this.forestQuestCompleteObjects.push(
+      overlay, panel, topGlow, seal, check, eyebrow, title,
+      questCard, quest, rewardLabel, rewardCard, reward,
+      button, buttonText
+    );
+
+    panel.setScale(0.96);
+    panel.setAlpha(0);
+    this.tweens.add({
+      targets: panel,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 180,
+      ease: "Back.easeOut",
+    });
+
+    this.tweens.add({
+      targets: seal,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 700,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    button.on("pointerover", () => button.setFillStyle(0x8bc486));
+    button.on("pointerout", () => button.setFillStyle(0x70a36b));
+
+    button.on("pointerdown", () => {
+      this.forestQuestCompleteObjects.forEach((object) => {
+        if (object) object.destroy();
+      });
+
+      this.forestQuestCompleteObjects = [];
+      this.forestQuestCompleteOpen = false;
+
+      this.updateHUD();
+      this.showForestQuestHUD();
+      this.setGameplayHUDVisible(true);
+    });
   }
 
   // ==================================================
@@ -957,8 +1230,16 @@ class ForestScene extends Phaser.Scene {
       return;
     }
 
-    // Pause movement while battle UI is open.
-    if (this.isBattleOpen || this.isBattleQuestionOpen || this.skillQuestionOpen || this.skillMenuOpen) {
+    // Pause movement dan sembunyikan prompt selama UI modal terbuka.
+    if (
+      this.forestQuestDialogOpen ||
+      this.forestQuestCompleteOpen ||
+      this.isBattleOpen ||
+      this.isBattleQuestionOpen ||
+      this.skillQuestionOpen ||
+      this.skillMenuOpen
+    ) {
+      this.hideInteractionPrompt();
       this.player.body.setVelocity(0, 0);
       return;
     }
@@ -1004,7 +1285,7 @@ class ForestScene extends Phaser.Scene {
       );
     });
 
-    this.interactText.setVisible(false);
+    this.hideInteractionPrompt();
     this.villageGatePrompt.setVisible(false);
 
     // Arm the return gate only after the E key has been released.
@@ -1029,8 +1310,9 @@ class ForestScene extends Phaser.Scene {
       );
 
       if (npcDistance < 85) {
-        this.interactText.setText("[ E ] Bicara Penjaga Isim");
-        this.interactText.setVisible(true);
+        this.showInteractionPrompt(
+          "Bicara dengan Penjaga Isim"
+        );
 
         if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
           this.showForestQuestDialog();
@@ -1042,8 +1324,9 @@ class ForestScene extends Phaser.Scene {
     const nearestMonster = this.getNearestMonster();
 
     if (nearestMonster && nearestMonster.isNearby && !nearestMonster.isDead()) {
-      this.interactText.setText(`[ E ] Lawan ${nearestMonster.name}`);
-      this.interactText.setVisible(true);
+      this.showInteractionPrompt(
+        `Lawan ${nearestMonster.name}`
+      );
 
       if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
         this.startBattle(nearestMonster);
@@ -1059,9 +1342,10 @@ class ForestScene extends Phaser.Scene {
     );
 
     if (gateDistance < 90) {
-      this.villageGatePrompt.setVisible(true);
-      this.interactText.setText("[ E ] Kembali ke Nahwu Village");
-      this.interactText.setVisible(true);
+      this.villageGatePrompt.setVisible(false);
+      this.showInteractionPrompt(
+        "Kembali ke Nahwu Village"
+      );
 
       if (
         this.forestGateReady &&
@@ -1099,9 +1383,7 @@ class ForestScene extends Phaser.Scene {
       false
     );
 
-    this.interactText.setVisible(
-      false
-    );
+    this.hideInteractionPrompt();
 
     this.visualFoundation.playSceneTransition({
       title: "NAHWU VILLAGE",
@@ -1335,9 +1617,11 @@ class ForestScene extends Phaser.Scene {
     this.battleSkillButton = null;
 
     // Hide interaction
-    this.interactText.setVisible(
-      false
-    );
+    this.hideInteractionPrompt();
+
+    // Battle harus fokus penuh ke arena battle.
+    // HUD eksplorasi (LVL / XP / GOLD / Quest) disembunyikan sementara.
+    this.setGameplayHUDVisible(false);
 
     this.battleObjects = [];
 
@@ -1365,12 +1649,19 @@ class ForestScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        700,
-        520,
-        0xffffff
+        720,
+        535,
+        0x0b1728,
+        0.98
       );
 
-    panel.setDepth(601);
+    panel
+      .setDepth(601)
+      .setStrokeStyle(
+        3,
+        0xd8b43f,
+        1
+      );
 
     // ==================================================
     // TITLE
@@ -1380,12 +1671,14 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          55,
-          "⚔️ BATTLE",
+          58,
+          "⚔ BATTLE ARENA",
           {
-            fontSize: "34px",
-            color: "#1A365D",
+            fontSize: "28px",
+            color: "#F6D365",
             fontStyle: "bold",
+            stroke: "#07111F",
+            strokeThickness: 4,
           }
         )
         .setOrigin(0.5);
@@ -1400,11 +1693,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          105,
+          103,
           monster.name,
           {
-            fontSize: "26px",
-            color: "#C53030",
+            fontSize: "22px",
+            color: "#F87171",
             fontStyle: "bold",
           }
         )
@@ -1418,55 +1711,50 @@ class ForestScene extends Phaser.Scene {
 
     const monsterHPBackground =
       this.add.rectangle(
-        230,
-        150,
-        340,
-        20,
-        0x1a365d
+        235,
+        140,
+        330,
+        18,
+        0x07111f
       );
 
-    monsterHPBackground.setDepth(
-      602
-    );
-
-    monsterHPBackground.setOrigin(
-      0,
-      0.5
-    );
+    monsterHPBackground
+      .setDepth(602)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(
+        1,
+        0x34516f,
+        1
+      );
 
     const monsterHPBar =
       this.add.rectangle(
-        230,
-        150,
-        340,
-        20,
-        0xdc2626
+        235,
+        140,
+        330,
+        18,
+        0xdc3f4f
       );
 
-    monsterHPBar.setDepth(603);
-
-    monsterHPBar.setOrigin(
-      0,
-      0.5
-    );
+    monsterHPBar
+      .setDepth(603)
+      .setOrigin(0, 0.5);
 
     this.battleMonsterHPText =
       this.add
         .text(
           400,
-          180,
+          166,
           "",
           {
-            fontSize: "17px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#D7E5F5",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battleMonsterHPText.setDepth(
-      602
-    );
+    this.battleMonsterHPText.setDepth(602);
 
     // ==================================================
     // PLAYER NAME
@@ -1476,11 +1764,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          225,
+          220,
           "PLAYER",
           {
-            fontSize: "24px",
-            color: "#3182CE",
+            fontSize: "21px",
+            color: "#73B7FF",
             fontStyle: "bold",
           }
         )
@@ -1494,55 +1782,50 @@ class ForestScene extends Phaser.Scene {
 
     const playerHPBackground =
       this.add.rectangle(
-        230,
-        265,
-        340,
-        20,
-        0x1a365d
+        235,
+        257,
+        330,
+        18,
+        0x07111f
       );
 
-    playerHPBackground.setDepth(
-      602
-    );
-
-    playerHPBackground.setOrigin(
-      0,
-      0.5
-    );
+    playerHPBackground
+      .setDepth(602)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(
+        1,
+        0x34516f,
+        1
+      );
 
     const playerHPBar =
       this.add.rectangle(
-        230,
-        265,
-        340,
-        20,
-        0x3182ce
+        235,
+        257,
+        330,
+        18,
+        0x3b8edb
       );
 
-    playerHPBar.setDepth(603);
-
-    playerHPBar.setOrigin(
-      0,
-      0.5
-    );
+    playerHPBar
+      .setDepth(603)
+      .setOrigin(0, 0.5);
 
     this.battlePlayerHPText =
       this.add
         .text(
           400,
-          295,
+          283,
           "",
           {
-            fontSize: "17px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#D7E5F5",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battlePlayerHPText.setDepth(
-      602
-    );
+    this.battlePlayerHPText.setDepth(602);
 
     // ==================================================
     // PLAYER STATS
@@ -1552,11 +1835,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          325,
-          `ATK: ${this.getPlayerAttack()}    DEF: ${this.getTotalDefense()}`,
+          312,
+          `ATK ${this.getPlayerAttack()}    •    DEF ${this.getTotalDefense()}`,
           {
-            fontSize: "16px",
-            color: "#4A5568",
+            fontSize: "14px",
+            color: "#AFC5DB",
             fontStyle: "bold",
           }
         )
@@ -1572,62 +1855,58 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          350,
+          338,
           "COMBO x0",
           {
-            fontSize: "16px",
-            color: "#D69E2E",
+            fontSize: "15px",
+            color: "#F6D365",
             fontStyle: "bold",
           }
         )
         .setOrigin(0.5);
 
-    this.battleComboText.setDepth(
-      602
-    );
-
-    // ==================================================
-    // BATTLE LOG BACKGROUND
-    // ==================================================
-
-    const battleLogBackground =
-      this.add.rectangle(
-        400,
-        390,
-        570,
-        55,
-        0xf1f5f9
-      );
-
-    battleLogBackground.setDepth(
-      602
-    );
+    this.battleComboText.setDepth(602);
 
     // ==================================================
     // BATTLE LOG
     // ==================================================
 
+    const battleLogBackground =
+      this.add.rectangle(
+        400,
+        382,
+        590,
+        58,
+        0x132842,
+        1
+      );
+
+    battleLogBackground
+      .setDepth(602)
+      .setStrokeStyle(
+        1,
+        0x355b7d,
+        1
+      );
+
     this.battleLogText =
       this.add
         .text(
           400,
-          390,
+          382,
           `Battle melawan ${monster.name} dimulai!`,
           {
-            fontSize: "15px",
-            color: "#2D3748",
+            fontSize: "14px",
+            color: "#E8F0F8",
             align: "center",
-
             wordWrap: {
-              width: 530,
+              width: 545,
             },
           }
         )
         .setOrigin(0.5);
 
-    this.battleLogText.setDepth(
-      603
-    );
+    this.battleLogText.setDepth(603);
 
     // ==================================================
     // BATTLE CHARACTER VISUALS
@@ -1636,27 +1915,39 @@ class ForestScene extends Phaser.Scene {
     this.battlePlayerVisual =
       this.add.container(
         150,
-        265
+        255
       );
 
     const battlePlayerBody =
-      this.add.circle(
+      this.add.sprite(
         0,
         0,
-        22,
-        0x3182ce
+        "playerWalkPixel",
+        0
       );
+
+    battlePlayerBody.setDisplaySize(
+      90,
+      90
+    );
 
     const battlePlayerMark =
       this.add
         .text(
           0,
-          0,
-          "⚔",
+          50,
+          "YOU",
           {
-            fontSize: "19px",
-            color: "#ffffff",
+            fontSize: "10px",
+            color: "#F6D365",
             fontStyle: "bold",
+            backgroundColor: "#0B1728",
+            padding: {
+              left: 5,
+              right: 5,
+              top: 2,
+              bottom: 2,
+            },
           }
         )
         .setOrigin(0.5);
@@ -1666,14 +1957,12 @@ class ForestScene extends Phaser.Scene {
       battlePlayerMark,
     ]);
 
-    this.battlePlayerVisual.setDepth(
-      603
-    );
+    this.battlePlayerVisual.setDepth(603);
 
     this.battleMonsterVisual =
       this.add.container(
         650,
-        150
+        140
       );
 
     const battleTexture =
@@ -1689,20 +1978,18 @@ class ForestScene extends Phaser.Scene {
 
     battleMonsterBody.setDisplaySize(
       this.currentMonster?.id === "irabGolem"
-        ? 120
-        : 105,
+        ? 118
+        : 102,
       this.currentMonster?.id === "irabGolem"
-        ? 120
-        : 105
+        ? 118
+        : 102
     );
 
     this.battleMonsterVisual.add(
       battleMonsterBody
     );
 
-    this.battleMonsterVisual.setDepth(
-      603
-    );
+    this.battleMonsterVisual.setDepth(603);
 
     this.visualFoundation.animateBattleEntry(
       this.battlePlayerVisual,
@@ -1716,13 +2003,19 @@ class ForestScene extends Phaser.Scene {
     const attackButton =
       this.add.rectangle(
         200,
-        465,
+        462,
         170,
-        55,
-        0xc53030
+        52,
+        0xb8323e
       );
 
-    attackButton.setDepth(602);
+    attackButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     attackButton.setInteractive({
       useHandCursor: true,
@@ -1732,10 +2025,10 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           200,
-          465,
-          "⚔️ SERANG",
+          462,
+          "⚔ SERANG",
           {
-            fontSize: "17px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1751,13 +2044,19 @@ class ForestScene extends Phaser.Scene {
     const skillButton =
       this.add.rectangle(
         400,
-        465,
+        462,
         170,
-        55,
-        0x718096
+        52,
+        0x596274
       );
 
-    skillButton.setDepth(602);
+    skillButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     skillButton.setInteractive({
       useHandCursor: true,
@@ -1767,10 +2066,10 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          465,
-          "✨ SKILL",
+          462,
+          "✦ SKILL",
           {
-            fontSize: "17px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1789,13 +2088,19 @@ class ForestScene extends Phaser.Scene {
     const defendButton =
       this.add.rectangle(
         600,
-        465,
+        462,
         170,
-        55,
-        0x3182ce
+        52,
+        0x2f76b7
       );
 
-    defendButton.setDepth(602);
+    defendButton
+      .setDepth(602)
+      .setStrokeStyle(
+        2,
+        0xf6d365,
+        0.65
+      );
 
     defendButton.setInteractive({
       useHandCursor: true,
@@ -1805,10 +2110,10 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           600,
-          465,
-          "🛡️ BERTAHAN",
+          462,
+          "🛡 BERTAHAN",
           {
-            fontSize: "19px",
+            fontSize: "16px",
             color: "#ffffff",
             fontStyle: "bold",
           }
@@ -1841,10 +2146,6 @@ class ForestScene extends Phaser.Scene {
       }
     );
 
-    // ==================================================
-    // HOVER SKILL
-    // ==================================================
-
     skillButton.on(
       "pointerover",
       () => {
@@ -1857,7 +2158,7 @@ class ForestScene extends Phaser.Scene {
           skills.powerStrike.requiredCombo
         ) {
           skillButton.setFillStyle(
-            0x9f7aea
+            0x8b5cf6
           );
         }
       }
@@ -1871,11 +2172,11 @@ class ForestScene extends Phaser.Scene {
           skills.powerStrike.requiredCombo
         ) {
           skillButton.setFillStyle(
-            0x805ad5
+            0x7651c9
           );
         } else {
           skillButton.setFillStyle(
-            0x718096
+            0x596274
           );
         }
       }
@@ -1888,13 +2189,19 @@ class ForestScene extends Phaser.Scene {
     const exitButton =
       this.add.rectangle(
         400,
-        525,
-        180,
-        40,
-        0x4a5568
+        527,
+        170,
+        38,
+        0x14243a
       );
 
-    exitButton.setDepth(602);
+    exitButton
+      .setDepth(602)
+      .setStrokeStyle(
+        1,
+        0x5f7891,
+        1
+      );
 
     exitButton.setInteractive({
       useHandCursor: true,
@@ -1904,11 +2211,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          525,
+          527,
           "KELUAR",
           {
-            fontSize: "15px",
-            color: "#ffffff",
+            fontSize: "13px",
+            color: "#C9D6E4",
             fontStyle: "bold",
           }
         )
@@ -1952,15 +2259,15 @@ class ForestScene extends Phaser.Scene {
           this.playerMaxHP;
 
         monsterHPBar.setDisplaySize(
-          340 *
+          330 *
             monsterPercentage,
-          20
+          18
         );
 
         playerHPBar.setDisplaySize(
-          340 *
+          330 *
             playerPercentage,
-          20
+          18
         );
 
         this.battleMonsterHPText.setText(
@@ -1985,11 +2292,11 @@ class ForestScene extends Phaser.Scene {
             skills.powerStrike.requiredCombo
           ) {
             this.battleSkillButton.setFillStyle(
-              0x805ad5
+              0x7651c9
             );
           } else {
             this.battleSkillButton.setFillStyle(
-              0x718096
+              0x596274
             );
           }
         }
@@ -2112,7 +2419,7 @@ class ForestScene extends Phaser.Scene {
         }
 
         attackButton.setFillStyle(
-          0xe53e3e
+          0xd94855
         );
       }
     );
@@ -2121,7 +2428,7 @@ class ForestScene extends Phaser.Scene {
       "pointerout",
       () => {
         attackButton.setFillStyle(
-          0xc53030
+          0xb8323e
         );
       }
     );
@@ -2140,7 +2447,7 @@ class ForestScene extends Phaser.Scene {
         }
 
         defendButton.setFillStyle(
-          0x4299e1
+          0x3f93d8
         );
       }
     );
@@ -2149,7 +2456,7 @@ class ForestScene extends Phaser.Scene {
       "pointerout",
       () => {
         defendButton.setFillStyle(
-          0x3182ce
+          0x2f76b7
         );
       }
     );
@@ -2306,8 +2613,8 @@ class ForestScene extends Phaser.Scene {
         300,
         800,
         600,
-        0x000000,
-        0.72
+        0x020817,
+        0.9
       );
 
     overlay.setDepth(800);
@@ -2320,12 +2627,19 @@ class ForestScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        650,
-        470,
-        0xffffff
+        660,
+        480,
+        0x0b1728,
+        1
       );
 
-    panel.setDepth(801);
+    panel
+      .setDepth(801)
+      .setStrokeStyle(
+        3,
+        0xd8b43f,
+        1
+      );
 
     // ==================================================
     // TITLE
@@ -2335,11 +2649,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          75,
+          72,
           "📖 NAHWU CHALLENGE",
           {
-            fontSize: "30px",
-            color: "#1A365D",
+            fontSize: "26px",
+            color: "#F6D365",
             fontStyle: "bold",
           }
         )
@@ -2355,12 +2669,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          120,
-          "Jawab dengan benar untuk menyerang!",
+          112,
+          "Jawab dengan benar untuk melancarkan serangan",
           {
-            fontSize: "15px",
-            color: "#718096",
-            fontStyle: "italic",
+            fontSize: "13px",
+            color: "#9DB5CC",
           }
         )
         .setOrigin(0.5);
@@ -2375,11 +2688,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          150,
-          `Difficulty: ${this.currentBattleQuestion.difficulty}`,
+          140,
+          `DIFFICULTY  •  ${String(this.currentBattleQuestion.difficulty).toUpperCase()}`,
           {
-            fontSize: "14px",
-            color: "#D69E2E",
+            fontSize: "12px",
+            color: "#E7BE4E",
             fontStyle: "bold",
           }
         )
@@ -2395,16 +2708,15 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          205,
+          202,
           this.currentBattleQuestion.question,
           {
-            fontSize: "21px",
-            color: "#2D3748",
+            fontSize: "19px",
+            color: "#F4F7FB",
             fontStyle: "bold",
             align: "center",
-
             wordWrap: {
-              width: 540,
+              width: 550,
             },
           }
         )
@@ -2431,19 +2743,21 @@ class ForestScene extends Phaser.Scene {
         index
       ) => {
         const y =
-          270 +
-          index * 55;
+          275 +
+          index * 53;
 
         const button =
           this.add.rectangle(
             400,
             y,
-            500,
+            520,
             42,
-            0xeaf2ff
+            0x142a46
           );
 
-        button.setDepth(802);
+        button
+          .setDepth(802)
+          .setStrokeStyle(1, 0x355b7d, 1);
 
         button.setInteractive({
           useHandCursor: true,
@@ -2454,10 +2768,10 @@ class ForestScene extends Phaser.Scene {
             .text(
               400,
               y,
-              answer.text,
+              `${String.fromCharCode(65 + index)}.  ${answer.text}`,
               {
                 fontSize: "18px",
-                color: "#1A365D",
+                color: "#E8F0F8",
                 fontStyle: "bold",
               }
             )
@@ -2484,7 +2798,7 @@ class ForestScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0x3182ce
+              0x245a87
             );
 
             text.setColor(
@@ -2503,11 +2817,11 @@ class ForestScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0xeaf2ff
+              0x142a46
             );
 
             text.setColor(
-              "#1A365D"
+              "#E8F0F8"
             );
           }
         );
@@ -2886,11 +3200,13 @@ class ForestScene extends Phaser.Scene {
         360,
         560,
         245,
-        0x111827,
-        0.98
+        0x0b1728,
+        0.99
       );
 
-    overlay.setDepth(900);
+    overlay
+      .setDepth(900)
+      .setStrokeStyle(2, 0xd8b43f, 0.9);
 
     overlay.setInteractive();
 
@@ -3183,24 +3499,30 @@ class ForestScene extends Phaser.Scene {
         300,
         800,
         600,
-        0x000000,
-        0.82
+        0x020817,
+        0.92
       );
 
     overlay.setDepth(1000);
-
     overlay.setInteractive();
 
     const panel =
       this.add.rectangle(
         400,
         300,
-        650,
-        470,
-        0xffffff
+        660,
+        480,
+        0x0b1728,
+        1
       );
 
-    panel.setDepth(1001);
+    panel
+      .setDepth(1001)
+      .setStrokeStyle(
+        3,
+        0x9f7aea,
+        1
+      );
 
     const skill =
       skills[this.currentSkill];
@@ -3209,11 +3531,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          85,
+          78,
           `${skill.icon} ${skill.name}`,
           {
-            fontSize: "30px",
-            color: "#805ad5",
+            fontSize: "27px",
+            color: "#C4A7FF",
             fontStyle: "bold",
           }
         )
@@ -3225,12 +3547,11 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          125,
-          "Jawab dengan benar untuk menggunakan skill!",
+          118,
+          "Jawab dengan benar untuk mengaktifkan skill",
           {
-            fontSize: "15px",
-            color: "#718096",
-            fontStyle: "italic",
+            fontSize: "13px",
+            color: "#9DB5CC",
           }
         )
         .setOrigin(0.5);
@@ -3241,15 +3562,15 @@ class ForestScene extends Phaser.Scene {
       this.add
         .text(
           400,
-          215,
+          205,
           question.question,
           {
-            fontSize: "22px",
-            color: "#2D3748",
+            fontSize: "20px",
+            color: "#F4F7FB",
             fontStyle: "bold",
             align: "center",
             wordWrap: {
-              width: 540,
+              width: 550,
             },
           }
         )
@@ -3268,18 +3589,20 @@ class ForestScene extends Phaser.Scene {
     question.answers.forEach(
       (answer, index) => {
         const y =
-          300 + index * 58;
+          290 + index * 55;
 
         const button =
           this.add.rectangle(
             400,
             y,
-            500,
+            520,
             44,
-            0xeaf2ff
+            0x142a46
           );
 
-        button.setDepth(1002);
+        button
+          .setDepth(1002)
+          .setStrokeStyle(1, 0x4b3f72, 1);
         button.setInteractive({
           useHandCursor: true,
         });
@@ -3289,10 +3612,10 @@ class ForestScene extends Phaser.Scene {
             .text(
               400,
               y,
-              answer.text,
+              `${String.fromCharCode(65 + index)}.  ${answer.text}`,
               {
                 fontSize: "17px",
-                color: "#1A365D",
+                color: "#E8F0F8",
                 fontStyle: "bold",
               }
             )
@@ -3313,7 +3636,7 @@ class ForestScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0x3182ce
+              0x6d4fb4
             );
 
             answerText.setColor(
@@ -3330,11 +3653,11 @@ class ForestScene extends Phaser.Scene {
             }
 
             button.setFillStyle(
-              0xeaf2ff
+              0x142a46
             );
 
             answerText.setColor(
-              "#1A365D"
+              "#E8F0F8"
             );
           }
         );
@@ -4064,12 +4387,14 @@ class ForestScene extends Phaser.Scene {
       this.add.rectangle(
         400,
         300,
-        560,
+        570,
         350,
-        0xffffff
+        0x0b1728
       );
 
-    panel.setDepth(701);
+    panel
+      .setDepth(701)
+      .setStrokeStyle(3, 0xd8b43f, 1);
 
     const title =
       this.add
@@ -4082,8 +4407,8 @@ class ForestScene extends Phaser.Scene {
 
             color:
               victory
-                ? "#15803D"
-                : "#DC2626",
+                ? "#68D391"
+                : "#FC8181",
 
             fontStyle: "bold",
           }
@@ -4101,7 +4426,7 @@ class ForestScene extends Phaser.Scene {
           {
             fontSize: "19px",
 
-            color: "#2D3748",
+            color: "#D7E5F5",
 
             align: "center",
 
@@ -4120,10 +4445,12 @@ class ForestScene extends Phaser.Scene {
         430,
         220,
         55,
-        0x1a365d
+        0xd8b43f
       );
 
-    button.setDepth(702);
+    button
+      .setDepth(702)
+      .setStrokeStyle(2, 0xf6d365, 1);
 
     button.setInteractive({
       useHandCursor: true,
@@ -4137,7 +4464,7 @@ class ForestScene extends Phaser.Scene {
           "LANJUT",
           {
             fontSize: "19px",
-            color: "#ffffff",
+            color: "#0B1728",
             fontStyle: "bold",
           }
         )
@@ -4217,9 +4544,22 @@ class ForestScene extends Phaser.Scene {
         this.battleSkillButton =
           null;
 
-        this.interactText.setVisible(
-          false
-        );
+        this.hideInteractionPrompt();
+
+        // Jika battle terakhir sekaligus menyelesaikan Forest Quest,
+        // tampilkan reward quest setelah result battle ditutup.
+        if (this.pendingForestQuestCompletion) {
+          const completion = this.pendingForestQuestCompletion;
+          this.pendingForestQuestCompletion = null;
+
+          this.showForestQuestComplete(
+            completion.title,
+            completion.rewardText
+          );
+        } else {
+          // Battle selesai biasa. Kembalikan HUD eksplorasi.
+          this.setGameplayHUDVisible(true);
+        }
       }
     );
   }
@@ -4381,6 +4721,9 @@ class ForestScene extends Phaser.Scene {
 
     this.battleSkillButton =
       null;
+
+    // Player kembali ke map, tampilkan HUD lagi.
+    this.setGameplayHUDVisible(true);
   }
 
   getPlayerAttack() {
@@ -4798,6 +5141,36 @@ class ForestScene extends Phaser.Scene {
       "playerWalkPixel"
     ) {
       this.player.setFrame(0);
+    }
+  }
+
+  // ==================================================
+  // GAMEPLAY HUD VISIBILITY
+  // ==================================================
+
+  setGameplayHUDVisible(visible) {
+    const hudObjects = [
+      this.hudLeftPanel,
+      this.levelText,
+      this.xpText,
+      this.xpBarBackground,
+      this.xpBarFill,
+      this.hudGoldPanel,
+      this.goldText,
+    ];
+
+    hudObjects.forEach((object) => {
+      if (object && object.active) {
+        object.setVisible(visible);
+      }
+    });
+
+    if (Array.isArray(this.forestQuestObjects)) {
+      this.forestQuestObjects.forEach((object) => {
+        if (object && object.active) {
+          object.setVisible(visible);
+        }
+      });
     }
   }
 
