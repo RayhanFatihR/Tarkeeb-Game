@@ -13,6 +13,10 @@ import irabGolemAsset from "../../assets/monsters/irab_golem.png";
 import chestClosedAsset from "../../assets/objects/chest_closed.png";
 import chestOpenAsset from "../../assets/objects/chest_open.png";
 import treeAsset from "../../assets/objects/tree_01.png";
+import forestGateAsset from "../../assets/objects/forest_gate.png";
+
+import nahwuHouseAsset from "../../assets/buildings/nahwu_house.png";
+import grammarHouseAsset from "../../assets/buildings/grammar_house.png";
 
 import grassTileAsset from "../../assets/tiles/grass_tile.png";
 import pathTileAsset from "../../assets/tiles/path_tile.png";
@@ -95,6 +99,21 @@ class VillageScene extends Phaser.Scene {
     this.load.image(
       "pathTilePixel",
       pathTileAsset
+    );
+
+    this.load.image(
+      "nahwuHousePixel",
+      nahwuHouseAsset
+    );
+
+    this.load.image(
+      "grammarHousePixel",
+      grammarHouseAsset
+    );
+
+    this.load.image(
+      "forestGatePixel",
+      forestGateAsset
     );
   }
 
@@ -472,13 +491,15 @@ class VillageScene extends Phaser.Scene {
     this.createHouse(
       180,
       230,
-      "Nahwu House"
+      "Nahwu House",
+      "nahwuHousePixel"
     );
 
     this.createHouse(
       620,
       230,
-      "Grammar House"
+      "Grammar House",
+      "grammarHousePixel"
     );
 
     // ==================================================
@@ -1167,24 +1188,45 @@ class VillageScene extends Phaser.Scene {
 
   createForestGate() {
     this.forestGate =
-      this.add.rectangle(
+      this.add.image(
         740,
         300,
-        50,
-        110,
-        0x553c2e
+        "forestGatePixel"
       );
 
-    this.forestGate.setStrokeStyle(
-      4,
-      0xd4af37
+    this.forestGate
+      .setDisplaySize(
+        110,
+        145
+      )
+      .setDepth(12);
+
+    // Area interaksi/collision transparan agar
+    // tampilan gate tetap memakai PNG pixel art.
+    this.forestGateCollider =
+      this.add.rectangle(
+        740,
+        315,
+        70,
+        85,
+        0xffffff,
+        0
+      );
+
+    this.physics.add.existing(
+      this.forestGateCollider,
+      true
+    );
+
+    this.obstacles.add(
+      this.forestGateCollider
     );
 
     this.forestGateText =
       this.add
         .text(
           740,
-          225,
+          210,
           "🌳 FOREST",
           {
             fontSize: "14px",
@@ -1195,13 +1237,14 @@ class VillageScene extends Phaser.Scene {
             fontStyle: "bold",
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(13);
 
     this.forestGatePrompt =
       this.add
         .text(
           740,
-          390,
+          395,
           "[ E ] Masuk Forest",
           {
             fontSize: "15px",
@@ -1212,7 +1255,8 @@ class VillageScene extends Phaser.Scene {
             fontStyle: "bold",
           }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(13);
 
     this.forestGatePrompt.setVisible(
       false
@@ -5144,47 +5188,47 @@ class VillageScene extends Phaser.Scene {
   createHouse(
     x,
     y,
-    name
+    name,
+    textureKey
   ) {
-    this.add.rectangle(
-      x,
-      y,
-      140,
-      100,
-      0xf5e5c0
-    );
+    const house =
+      this.add.image(
+        x,
+        y,
+        textureKey
+      );
 
-    this.add.triangle(
-      x,
-      y - 85,
-      x - 70,
-      y - 10,
-      x + 70,
-      y - 10,
-      x,
-      y - 110,
-      0xb44a3a
-    );
+    house
+      .setDisplaySize(
+        180,
+        150
+      )
+      .setDepth(10);
 
     this.add
       .text(
         x,
-        y + 5,
+        y + 88,
         name,
         {
-          fontSize: "15px",
-          color: "#1A365D",
+          fontSize: "14px",
+          color: "#ffffff",
           fontStyle: "bold",
+          stroke: "#1A365D",
+          strokeThickness: 4,
         }
       )
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(11);
 
+    // Collision hanya pada bagian bawah rumah,
+    // supaya atap tidak terasa seperti tembok besar.
     const collider =
       this.add.rectangle(
         x,
-        y,
-        150,
-        115,
+        y + 25,
+        135,
+        80,
         0xffffff,
         0
       );
