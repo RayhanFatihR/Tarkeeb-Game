@@ -2,10 +2,15 @@ import Phaser from "phaser";
 
 import playerWalkAsset from "../../assets/player/player_walk.png";
 import forestGateAsset from "../../assets/objects/forest_gate.png";
+import grammarMasterAsset from "../../assets/npc/grammar_master.png";
 import pathTileAsset from "../../assets/tiles/path_tile.png";
+
+import quests from "../data/quests.js";
 
 import {
   getGameProgress,
+  getAreaRequirementStatus,
+  markQuestAccepted,
   setCurrentArea,
 } from "../data/progression.js";
 
@@ -29,6 +34,13 @@ class DesertScene extends Phaser.Scene {
     this.load.image(
       "desertReturnGatePixel",
       forestGateAsset
+    );
+
+    // Placeholder Guru Fi'il. Asset khusus Desert akan dibuat pada
+    // tahap visual polish agar logic Chapter III bisa dibangun dulu.
+    this.load.image(
+      "fiilMentorPixel",
+      grammarMasterAsset
     );
 
     // Path tile lama dipakai sementara sebagai base pixel texture,
@@ -93,13 +105,23 @@ class DesertScene extends Phaser.Scene {
     this.inventoryOpen = false;
     this.inventoryObjects = [];
 
+    // ==================================================
+    // CHAPTER III — FI'IL DESERT QUEST FOUNDATION
+    // ==================================================
+    this.desertQuest = quests.fiilDesertTrial;
+    this.fiilDialogOpen = false;
+    this.fiilDialogObjects = [];
+
     this.obstacles = this.physics.add.staticGroup();
 
     this.createWorld();
     this.createPlayer();
+    this.createFiilMentor();
     this.createForestReturnGate();
     this.createHUD();
+    this.createDesertQuestHUD();
     this.updateHUD();
+    this.updateDesertQuestHUD();
 
     this.physics.add.collider(
       this.player,
@@ -108,6 +130,10 @@ class DesertScene extends Phaser.Scene {
 
     this.interactKey = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.E
+    );
+
+    this.escapeKey = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.ESC
     );
 
     this.returnGateReady = false;
@@ -447,6 +473,511 @@ class DesertScene extends Phaser.Scene {
   }
 
   // ==================================================
+  // GURU FI'IL — CHAPTER III QUEST FOUNDATION
+  // ==================================================
+
+  createFiilMentor() {
+    const x = 245;
+    const y = 345;
+
+    this.fiilMentorShadow = this.add
+      .ellipse(x, y + 35, 52, 16, 0x4a2a10, 0.28)
+      .setDepth(13);
+
+    this.fiilMentor = this.add
+      .image(x, y, "fiilMentorPixel")
+      .setDisplaySize(94, 112)
+      .setTint(0xffc56b)
+      .setDepth(16);
+
+    this.fiilMentorName = this.add
+      .text(x, y + 61, "Guru Fi'il", {
+        fontSize: "13px",
+        color: "#FFF7D6",
+        fontStyle: "bold",
+        stroke: "#5B3515",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(18);
+
+    this.fiilQuestMarker = this.add
+      .text(x, y - 74, "!", {
+        fontSize: "34px",
+        color: "#FFE066",
+        fontStyle: "bold",
+        stroke: "#7B341E",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setDepth(19);
+
+    this.tweens.add({
+      targets: this.fiilQuestMarker,
+      y: y - 82,
+      duration: 650,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    const collider = this.add.rectangle(
+      x,
+      y + 28,
+      42,
+      44,
+      0xffffff,
+      0
+    );
+
+    this.physics.add.existing(collider, true);
+    this.obstacles.add(collider);
+
+    this.updateFiilMentorMarker();
+  }
+
+  updateFiilMentorMarker() {
+    if (!this.fiilQuestMarker) {
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+
+    const desertProgress = this.gameProgress.fiilDesert;
+
+    if (desertProgress?.questCompleted) {
+      this.fiilQuestMarker
+        .setText("✓")
+        .setColor("#86EFAC");
+      return;
+    }
+
+    if (desertProgress?.questAccepted) {
+      this.fiilQuestMarker
+        .setText("?")
+        .setColor("#FCD34D");
+      return;
+    }
+
+    this.fiilQuestMarker
+      .setText("!")
+      .setColor("#FFE066");
+  }
+
+  showFiilMentorDialog() {
+    if (
+      this.fiilDialogOpen ||
+      this.inventoryOpen ||
+      this.isTransitioning
+    ) {
+      return;
+    }
+
+    this.fiilDialogOpen = true;
+    this.hideInteractionPrompt();
+    this.setGameplayHUDVisible(false);
+
+    if (this.player?.body) {
+      this.player.body.setVelocity(0, 0);
+    }
+
+    const depth = 3200;
+    const addObject = (object) => {
+      this.fiilDialogObjects.push(object);
+      return object;
+    };
+
+    addObject(
+      this.add
+        .rectangle(400, 300, 800, 600, 0x140d05, 0.58)
+        .setDepth(depth)
+        .setScrollFactor(0)
+    );
+
+    addObject(
+      this.add
+        .rectangle(400, 425, 650, 250, 0x1d140b, 0.98)
+        .setDepth(depth + 1)
+        .setScrollFactor(0)
+        .setStrokeStyle(3, 0xe2b955, 0.95)
+    );
+
+    addObject(
+      this.add
+        .rectangle(190, 416, 126, 170, 0x2c1c0d, 1)
+        .setDepth(depth + 2)
+        .setScrollFactor(0)
+        .setStrokeStyle(2, 0xc98a3d, 0.95)
+    );
+
+    addObject(
+      this.add
+        .image(190, 410, "fiilMentorPixel")
+        .setDisplaySize(96, 120)
+        .setTint(0xffc56b)
+        .setDepth(depth + 3)
+        .setScrollFactor(0)
+    );
+
+    addObject(
+      this.add
+        .text(190, 487, "GURU FI'IL", {
+          fontSize: "10px",
+          color: "#FFE58A",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(depth + 4)
+        .setScrollFactor(0)
+    );
+
+    addObject(
+      this.add
+        .text(278, 326, "Guru Fi'il", {
+          fontSize: "22px",
+          color: "#FFF1C7",
+          fontStyle: "bold",
+        })
+        .setDepth(depth + 3)
+        .setScrollFactor(0)
+    );
+
+    addObject(
+      this.add
+        .rectangle(490, 358, 420, 2, 0xb7863e, 0.8)
+        .setDepth(depth + 3)
+        .setScrollFactor(0)
+    );
+
+    this.gameProgress = getGameProgress(this);
+    const accepted =
+      this.gameProgress.fiilDesert?.questAccepted === true;
+
+    if (!accepted) {
+      addObject(
+        this.add
+          .text(
+            278,
+            375,
+            "Selamat datang di Fi'il Desert.\nDi sini kamu akan menguasai tiga bentuk Fi'il.",
+            {
+              fontSize: "14px",
+              color: "#F8E7C1",
+              lineSpacing: 7,
+              wordWrap: { width: 500 },
+            }
+          )
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      addObject(
+        this.add
+          .rectangle(500, 447, 445, 72, 0x2b1b0d, 0.98)
+          .setDepth(depth + 2)
+          .setScrollFactor(0)
+          .setStrokeStyle(2, 0x9e6a32, 0.9)
+      );
+
+      addObject(
+        this.add
+          .text(294, 419, "NEW QUEST", {
+            fontSize: "10px",
+            color: "#EAB84F",
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      addObject(
+        this.add
+          .text(294, 438, this.desertQuest.title, {
+            fontSize: "15px",
+            color: "#FFF1C7",
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      addObject(
+        this.add
+          .text(294, 462, this.desertQuest.description, {
+            fontSize: "11px",
+            color: "#E8D3A6",
+          })
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      const laterButton = addObject(
+        this.add
+          .rectangle(550, 515, 122, 38, 0x31445b, 1)
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+          .setStrokeStyle(1, 0x6f89a7, 0.9)
+          .setInteractive({ useHandCursor: true })
+      );
+
+      addObject(
+        this.add
+          .text(550, 515, "NANTI", {
+            fontSize: "12px",
+            color: "#FFFFFF",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+          .setScrollFactor(0)
+      );
+
+      laterButton.on("pointerdown", () => {
+        this.closeFiilDialog();
+      });
+
+      const acceptButton = addObject(
+        this.add
+          .rectangle(690, 515, 144, 38, 0xd7a92e, 1)
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+          .setStrokeStyle(2, 0xffe28a, 0.95)
+          .setInteractive({ useHandCursor: true })
+      );
+
+      addObject(
+        this.add
+          .text(690, 515, "TERIMA QUEST", {
+            fontSize: "12px",
+            color: "#23170A",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+          .setScrollFactor(0)
+      );
+
+      acceptButton.on("pointerdown", () => {
+        this.acceptFiilQuest();
+      });
+    } else {
+      const status = getAreaRequirementStatus(
+        this,
+        "fiilDesert"
+      );
+
+      addObject(
+        this.add
+          .text(
+            278,
+            382,
+            "Ujianmu sudah dimulai. Taklukkan tiga Penjaga Fi'il\ndan buktikan pemahamanmu tentang Fi'il.",
+            {
+              fontSize: "14px",
+              color: "#F8E7C1",
+              lineSpacing: 7,
+            }
+          )
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      addObject(
+        this.add
+          .rectangle(500, 460, 445, 76, 0x2b1b0d, 0.98)
+          .setDepth(depth + 2)
+          .setScrollFactor(0)
+          .setStrokeStyle(2, 0x9e6a32, 0.9)
+      );
+
+      addObject(
+        this.add
+          .text(294, 432, this.desertQuest.title, {
+            fontSize: "14px",
+            color: "#FFE58A",
+            fontStyle: "bold",
+          })
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      addObject(
+        this.add
+          .text(
+            294,
+            460,
+            `Progress Penjaga Fi'il  ${status.defeatedCount} / ${status.requiredCount}`,
+            {
+              fontSize: "13px",
+              color: "#FFFFFF",
+              fontStyle: "bold",
+            }
+          )
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+      );
+
+      const closeButton = addObject(
+        this.add
+          .rectangle(672, 515, 150, 38, 0xd7a92e, 1)
+          .setDepth(depth + 3)
+          .setScrollFactor(0)
+          .setStrokeStyle(2, 0xffe28a, 0.95)
+          .setInteractive({ useHandCursor: true })
+      );
+
+      addObject(
+        this.add
+          .text(672, 515, "LANJUTKAN", {
+            fontSize: "12px",
+            color: "#23170A",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 4)
+          .setScrollFactor(0)
+      );
+
+      closeButton.on("pointerdown", () => {
+        this.closeFiilDialog();
+      });
+    }
+  }
+
+  acceptFiilQuest() {
+    this.gameProgress = markQuestAccepted(
+      this,
+      "fiilDesert",
+      true
+    );
+
+    this.updateFiilMentorMarker();
+    this.closeFiilDialog();
+    this.updateDesertQuestHUD();
+  }
+
+  closeFiilDialog() {
+    this.fiilDialogObjects.forEach((object) => {
+      if (object?.active) {
+        object.destroy();
+      }
+    });
+
+    this.fiilDialogObjects = [];
+    this.fiilDialogOpen = false;
+    this.setGameplayHUDVisible(true);
+    this.updateFiilMentorMarker();
+  }
+
+  // ==================================================
+  // DESERT QUEST HUD
+  // ==================================================
+
+  createDesertQuestHUD() {
+    const depth = 2000;
+
+    this.desertQuestPanel = this.add
+      .rectangle(520, 72, 266, 116, 0x2a1a0c, 0.94)
+      .setOrigin(0, 0)
+      .setDepth(depth)
+      .setScrollFactor(0)
+      .setStrokeStyle(2, 0xe2b955, 0.85);
+
+    this.desertQuestLabel = this.add
+      .text(534, 85, "ACTIVE QUEST", {
+        fontSize: "11px",
+        color: "#FFE58A",
+        fontStyle: "bold",
+      })
+      .setDepth(depth + 1)
+      .setScrollFactor(0);
+
+    this.desertQuestTitle = this.add
+      .text(534, 106, this.desertQuest.title, {
+        fontSize: "12px",
+        color: "#FFF7D6",
+        fontStyle: "bold",
+      })
+      .setDepth(depth + 1)
+      .setScrollFactor(0);
+
+    this.desertQuestProgressText = this.add
+      .text(534, 139, "", {
+        fontSize: "11px",
+        color: "#FFFFFF",
+        fontStyle: "bold",
+      })
+      .setDepth(depth + 1)
+      .setScrollFactor(0);
+
+    this.desertQuestBarBg = this.add
+      .rectangle(534, 169, 236, 10, 0x120a03, 0.95)
+      .setOrigin(0, 0.5)
+      .setDepth(depth + 1)
+      .setScrollFactor(0)
+      .setStrokeStyle(1, 0xb7863e, 0.8);
+
+    this.desertQuestBarFill = this.add
+      .rectangle(536, 169, 232, 6, 0xe2b955, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(depth + 2)
+      .setScrollFactor(0);
+  }
+
+  setDesertQuestHUDVisible(visible) {
+    [
+      this.desertQuestPanel,
+      this.desertQuestLabel,
+      this.desertQuestTitle,
+      this.desertQuestProgressText,
+      this.desertQuestBarBg,
+      this.desertQuestBarFill,
+    ].forEach((object) => {
+      object?.setVisible(visible);
+    });
+  }
+
+  updateDesertQuestHUD() {
+    if (!this.desertQuestPanel) {
+      return;
+    }
+
+    this.gameProgress = getGameProgress(this);
+    const desertProgress = this.gameProgress.fiilDesert;
+
+    if (
+      desertProgress?.questAccepted !== true ||
+      desertProgress?.questCompleted === true
+    ) {
+      this.setDesertQuestHUDVisible(false);
+      return;
+    }
+
+    const status = getAreaRequirementStatus(
+      this,
+      "fiilDesert"
+    );
+
+    this.setDesertQuestHUDVisible(true);
+    this.desertQuestProgressText.setText(
+      `Penjaga Fi'il  ${status.defeatedCount} / ${status.requiredCount}`
+    );
+
+    const percentage = status.requiredCount > 0
+      ? Phaser.Math.Clamp(
+          status.defeatedCount / status.requiredCount,
+          0,
+          1
+        )
+      : 0;
+
+    this.desertQuestBarFill.setDisplaySize(
+      Math.max(0, 232 * percentage),
+      6
+    );
+  }
+
+  // ==================================================
   // RETURN GATE TO FOREST
   // ==================================================
 
@@ -506,7 +1037,8 @@ class DesertScene extends Phaser.Scene {
 
     if (
       this.inventoryKey &&
-      Phaser.Input.Keyboard.JustDown(this.inventoryKey)
+      Phaser.Input.Keyboard.JustDown(this.inventoryKey) &&
+      !this.fiilDialogOpen
     ) {
       if (this.inventoryOpen) {
         this.closeInventory();
@@ -519,6 +1051,20 @@ class DesertScene extends Phaser.Scene {
     if (this.inventoryOpen) {
       this.hideInteractionPrompt();
       this.player.body.setVelocity(0, 0);
+      return;
+    }
+
+    if (this.fiilDialogOpen) {
+      this.hideInteractionPrompt();
+      this.player.body.setVelocity(0, 0);
+
+      if (
+        this.escapeKey &&
+        Phaser.Input.Keyboard.JustDown(this.escapeKey)
+      ) {
+        this.closeFiilDialog();
+      }
+
       return;
     }
 
@@ -552,6 +1098,34 @@ class DesertScene extends Phaser.Scene {
     );
 
     this.hideInteractionPrompt();
+
+    const mentorDistance = this.fiilMentor
+      ? Phaser.Math.Distance.Between(
+          this.player.x,
+          this.player.y,
+          this.fiilMentor.x,
+          this.fiilMentor.y
+        )
+      : Number.POSITIVE_INFINITY;
+
+    if (mentorDistance < 105) {
+      const questAccepted =
+        this.gameProgress?.fiilDesert?.questAccepted === true;
+
+      this.showInteractionPrompt(
+        questAccepted
+          ? "Bicara dengan Guru Fi'il"
+          : "Ambil Quest dari Guru Fi'il"
+      );
+
+      if (
+        Phaser.Input.Keyboard.JustDown(this.interactKey)
+      ) {
+        this.showFiilMentorDialog();
+      }
+
+      return;
+    }
 
     const gateDistance = Phaser.Math.Distance.Between(
       this.player.x,
@@ -623,7 +1197,11 @@ class DesertScene extends Phaser.Scene {
   }
 
   showInteractionPrompt(message) {
-    if (!this.interactionPrompt || this.inventoryOpen) {
+    if (
+      !this.interactionPrompt ||
+      this.inventoryOpen ||
+      this.fiilDialogOpen
+    ) {
       return;
     }
 
@@ -735,6 +1313,12 @@ class DesertScene extends Phaser.Scene {
     ].forEach((object) => {
       object?.setVisible(visible);
     });
+
+    if (!visible) {
+      this.setDesertQuestHUDVisible(false);
+    } else {
+      this.updateDesertQuestHUD();
+    }
   }
 
   getLevelTitle(level) {
@@ -1015,9 +1599,7 @@ class DesertScene extends Phaser.Scene {
 
       addObject(
         this.add
-          .text(515, 290, "🎒", {
-            fontSize: "44px",
-          })
+          .text(515, 290, "🎒", { fontSize: "44px" })
           .setOrigin(0.5)
           .setDepth(depth + 3)
       );
@@ -1033,8 +1615,32 @@ class DesertScene extends Phaser.Scene {
           .setDepth(depth + 3)
       );
     } else {
-      this.playerData.inventory.forEach((item, index) => {
-        const y = 185 + index * 86;
+      // Maksimal 4 item per halaman agar daftar tidak keluar panel
+      // dan tidak menabrak tombol TUTUP ketika inventory mulai penuh.
+      const inventoryPageSize = 4;
+      const inventoryTotalPages = Math.max(
+        1,
+        Math.ceil(this.playerData.inventory.length / inventoryPageSize)
+      );
+
+      this.inventoryPage = Phaser.Math.Clamp(
+        Number(this.inventoryPage) || 0,
+        0,
+        inventoryTotalPages - 1
+      );
+
+      const inventoryStartIndex =
+        this.inventoryPage * inventoryPageSize;
+
+      const visibleInventoryItems =
+        this.playerData.inventory.slice(
+          inventoryStartIndex,
+          inventoryStartIndex + inventoryPageSize
+        );
+
+      visibleInventoryItems.forEach((item, slotIndex) => {
+        const actualIndex = inventoryStartIndex + slotIndex;
+        const y = 182 + slotIndex * 78;
         const rarityColor = this.getRarityColor(item.rarity);
         const rarityNumber = parseInt(
           rarityColor.replace("#", ""),
@@ -1044,7 +1650,7 @@ class DesertScene extends Phaser.Scene {
 
         const card = addObject(
           this.add
-            .rectangle(515, y, 390, 72, 0x132844, 1)
+            .rectangle(515, y, 390, 66, 0x132844, 1)
             .setDepth(depth + 2)
             .setStrokeStyle(
               2,
@@ -1056,7 +1662,7 @@ class DesertScene extends Phaser.Scene {
         addObject(
           this.add
             .text(340, y, item.icon || "🎒", {
-              fontSize: "30px",
+              fontSize: "28px",
             })
             .setOrigin(0.5)
             .setDepth(depth + 3)
@@ -1064,8 +1670,8 @@ class DesertScene extends Phaser.Scene {
 
         addObject(
           this.add
-            .text(370, y - 24, item.name, {
-              fontSize: "13px",
+            .text(370, y - 21, item.name, {
+              fontSize: "12px",
               color: rarityColor,
               fontStyle: "bold",
             })
@@ -1076,10 +1682,10 @@ class DesertScene extends Phaser.Scene {
           this.add
             .text(
               370,
-              y - 4,
+              y - 3,
               `${item.type}  •  ${String(item.rarity).toUpperCase()}`,
               {
-                fontSize: "9px",
+                fontSize: "8px",
                 color: "#91AAC8",
                 fontStyle: "bold",
               }
@@ -1091,12 +1697,12 @@ class DesertScene extends Phaser.Scene {
           this.add
             .text(
               370,
-              y + 15,
+              y + 13,
               item.description || "Tidak ada deskripsi.",
               {
-                fontSize: "9px",
+                fontSize: "8px",
                 color: "#D6E3F4",
-                wordWrap: { width: 205 },
+                wordWrap: { width: 200 },
               }
             )
             .setDepth(depth + 3)
@@ -1108,7 +1714,7 @@ class DesertScene extends Phaser.Scene {
               675,
               y,
               82,
-              30,
+              28,
               equipped ? 0x8b6b13 : 0x1d5f91,
               1
             )
@@ -1121,18 +1727,13 @@ class DesertScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true })
         );
 
-        addObject(
+        const equipText = addObject(
           this.add
-            .text(
-              675,
-              y,
-              equipped ? "UNEQUIP" : "EQUIP",
-              {
-                fontSize: "9px",
-                color: "#FFFFFF",
-                fontStyle: "bold",
-              }
-            )
+            .text(675, y, equipped ? "UNEQUIP" : "EQUIP", {
+              fontSize: "8px",
+              color: "#FFFFFF",
+              fontStyle: "bold",
+            })
             .setOrigin(0.5)
             .setDepth(depth + 4)
         );
@@ -1155,10 +1756,103 @@ class DesertScene extends Phaser.Scene {
           if (equipped) {
             this.unequipItem(item);
           } else {
-            this.equipItem(index);
+            this.equipItem(actualIndex);
           }
         });
+
+        equipText.disableInteractive?.();
       });
+
+      // Pagination hanya muncul ketika item lebih dari 4.
+      if (inventoryTotalPages > 1) {
+        const navY = 480;
+        const canPrev = this.inventoryPage > 0;
+        const canNext = this.inventoryPage < inventoryTotalPages - 1;
+
+        const prevButton = addObject(
+          this.add
+            .rectangle(
+              410,
+              navY,
+              74,
+              26,
+              canPrev ? 0x1d5f91 : 0x132033,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, canPrev ? 0x63a7d8 : 0x31577d, 0.8)
+        );
+
+        addObject(
+          this.add
+            .text(410, navY, "◀ PREV", {
+              fontSize: "8px",
+              color: canPrev ? "#FFFFFF" : "#657A96",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        addObject(
+          this.add
+            .text(
+              515,
+              navY,
+              `${this.inventoryPage + 1} / ${inventoryTotalPages}`,
+              {
+                fontSize: "10px",
+                color: "#FFE58A",
+                fontStyle: "bold",
+              }
+            )
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        const nextButton = addObject(
+          this.add
+            .rectangle(
+              620,
+              navY,
+              74,
+              26,
+              canNext ? 0x1d5f91 : 0x132033,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, canNext ? 0x63a7d8 : 0x31577d, 0.8)
+        );
+
+        addObject(
+          this.add
+            .text(620, navY, "NEXT ▶", {
+              fontSize: "8px",
+              color: canNext ? "#FFFFFF" : "#657A96",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        if (canPrev) {
+          prevButton.setInteractive({ useHandCursor: true });
+          prevButton.on("pointerdown", () => {
+            this.inventoryPage -= 1;
+            this.closeInventory();
+            this.showInventory();
+          });
+        }
+
+        if (canNext) {
+          nextButton.setInteractive({ useHandCursor: true });
+          nextButton.on("pointerdown", () => {
+            this.inventoryPage += 1;
+            this.closeInventory();
+            this.showInventory();
+          });
+        }
+      }
     }
 
     addObject(

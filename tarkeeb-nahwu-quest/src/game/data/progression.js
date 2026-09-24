@@ -1,6 +1,6 @@
 // ============================================================
 // TARKEEB — GLOBAL PROGRESSION FOUNDATION
-// Step 2G.1
+// Step 2H.1
 //
 // Satu sumber state untuk progression seluruh dunia:
 // 1. Nahwu Village
@@ -46,7 +46,11 @@ export const AREA_CONFIG = Object.freeze({
     chapter: 3,
     name: "Fi'il Desert",
     nextArea: "castle",
-    requiredMonsterIds: [],
+    requiredMonsterIds: [
+      "fiilMadhiScorpion",
+      "fiilMudhariRaider",
+      "fiilAmrDjinn",
+    ],
   },
 
   castle: {
@@ -59,6 +63,7 @@ export const AREA_CONFIG = Object.freeze({
 
 const createAreaState = (unlocked = false) => ({
   unlocked,
+  questAccepted: false,
   questCompleted: false,
   defeatedMonsters: [],
   openedChests: [],
@@ -67,7 +72,7 @@ const createAreaState = (unlocked = false) => ({
 
 export function createDefaultGameProgress() {
   return {
-    version: 4,
+    version: 6,
     currentArea: AREA_KEYS.VILLAGE,
 
     nahwuVillage: createAreaState(true),
@@ -116,6 +121,9 @@ function normalizeAreaState(rawArea, defaultUnlocked) {
         ? source.unlocked
         : fallback.unlocked,
 
+    questAccepted:
+      source.questAccepted === true || source.questCompleted === true,
+
     questCompleted:
       source.questCompleted === true,
 
@@ -138,7 +146,7 @@ export function normalizeGameProgress(rawProgress) {
       : {};
 
   const progress = {
-    version: 4,
+    version: 6,
 
     currentArea:
       AREA_CONFIG[source.currentArea]
@@ -172,6 +180,9 @@ export function normalizeGameProgress(rawProgress) {
     shop: {
       unlocked:
         source.shop?.unlocked !== false,
+      // Nilai sementara. Tier final akan diturunkan langsung dari
+      // progression chapter di bagian bawah normalizeGameProgress().
+      // Dengan begitu save/runtime lama tidak bisa membuka tier terlalu tinggi.
       tier: Math.max(
         1,
         Math.min(
@@ -231,10 +242,56 @@ export function normalizeGameProgress(rawProgress) {
     progress.shop.tier = Math.max(progress.shop.tier, 3);
   }
 
+  const desertMonstersDone =
+    AREA_CONFIG.fiilDesert.requiredMonsterIds.every(
+      (monsterId) =>
+        progress.fiilDesert.defeatedMonsters.includes(monsterId)
+    );
+
+  if (
+    progress.fiilDesert.questCompleted &&
+    desertMonstersDone
+  ) {
+    progress.fiilDesert.completed = true;
+    progress.castle.unlocked = true;
+    progress.shop.tier = Math.max(progress.shop.tier, 4);
+  }
+
   if (progress.fiilDesert.completed) {
     progress.castle.unlocked = true;
     progress.shop.tier = Math.max(progress.shop.tier, 4);
   }
+
+  // ==================================================
+  // STEP 2G.5 — STRICT SHOP TIER VALIDATION
+  // ==================================================
+  // Shop tier sekarang selalu mengikuti progression dunia, bukan sekadar
+  // nilai lama yang tersimpan di registry. Ini mencegah Tier 3/4 terbuka
+  // terlalu cepat setelah perubahan roadmap atau migrasi runtime.
+  let derivedShopTier = 1;
+
+  if (
+    progress.nahwuVillage.completed ||
+    progress.forest.unlocked
+  ) {
+    derivedShopTier = 2;
+  }
+
+  if (
+    progress.forest.completed ||
+    progress.fiilDesert.unlocked
+  ) {
+    derivedShopTier = 3;
+  }
+
+  if (
+    progress.fiilDesert.completed ||
+    progress.castle.unlocked
+  ) {
+    derivedShopTier = 4;
+  }
+
+  progress.shop.tier = derivedShopTier;
 
   return progress;
 }
@@ -306,6 +363,26 @@ export function markMonsterDefeated(
   );
 }
 
+export function markQuestAccepted(
+  scene,
+  areaKey,
+  accepted = true
+) {
+  const progress = getGameProgress(scene);
+
+  if (!AREA_CONFIG[areaKey]) {
+    return progress;
+  }
+
+  progress[areaKey].questAccepted =
+    accepted === true;
+
+  return saveGameProgress(
+    scene,
+    progress
+  );
+}
+
 export function markQuestCompleted(
   scene,
   areaKey,
@@ -319,6 +396,10 @@ export function markQuestCompleted(
 
   progress[areaKey].questCompleted =
     completed === true;
+
+  if (completed === true) {
+    progress[areaKey].questAccepted = true;
+  }
 
   return saveGameProgress(
     scene,
@@ -420,6 +501,7 @@ export function getAreaRequirementStatus(
   if (!config || !area) {
     return {
       valid: false,
+      questAccepted: false,
       questCompleted: false,
       defeatedCount: 0,
       requiredCount: 0,
@@ -442,6 +524,7 @@ export function getAreaRequirementStatus(
 
   return {
     valid: true,
+    questAccepted: area.questAccepted === true,
     questCompleted: area.questCompleted === true,
     defeatedCount,
     requiredCount: requiredIds.length,

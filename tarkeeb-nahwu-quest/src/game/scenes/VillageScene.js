@@ -8587,23 +8587,54 @@ class VillageScene extends Phaser.Scene {
           .setDepth(depth + 3)
       );
     } else {
-      this.playerData.inventory.forEach((item, index) => {
-        const y = 185 + index * 86;
+      // Maksimal 4 item per halaman agar daftar tidak keluar panel
+      // dan tidak menabrak tombol TUTUP ketika inventory mulai penuh.
+      const inventoryPageSize = 4;
+      const inventoryTotalPages = Math.max(
+        1,
+        Math.ceil(this.playerData.inventory.length / inventoryPageSize)
+      );
+
+      this.inventoryPage = Phaser.Math.Clamp(
+        Number(this.inventoryPage) || 0,
+        0,
+        inventoryTotalPages - 1
+      );
+
+      const inventoryStartIndex =
+        this.inventoryPage * inventoryPageSize;
+
+      const visibleInventoryItems =
+        this.playerData.inventory.slice(
+          inventoryStartIndex,
+          inventoryStartIndex + inventoryPageSize
+        );
+
+      visibleInventoryItems.forEach((item, slotIndex) => {
+        const actualIndex = inventoryStartIndex + slotIndex;
+        const y = 182 + slotIndex * 78;
         const rarityColor = this.getRarityColor(item.rarity);
-        const rarityNumber = parseInt(rarityColor.replace("#", ""), 16);
+        const rarityNumber = parseInt(
+          rarityColor.replace("#", ""),
+          16
+        );
         const equipped = this.isItemEquipped(item);
 
         const card = addObject(
           this.add
-            .rectangle(515, y, 390, 72, 0x132844, 1)
+            .rectangle(515, y, 390, 66, 0x132844, 1)
             .setDepth(depth + 2)
-            .setStrokeStyle(2, rarityNumber, equipped ? 1 : 0.65)
+            .setStrokeStyle(
+              2,
+              rarityNumber,
+              equipped ? 1 : 0.65
+            )
         );
 
         addObject(
           this.add
             .text(340, y, item.icon || "🎒", {
-              fontSize: "30px",
+              fontSize: "28px",
             })
             .setOrigin(0.5)
             .setDepth(depth + 3)
@@ -8611,8 +8642,8 @@ class VillageScene extends Phaser.Scene {
 
         addObject(
           this.add
-            .text(370, y - 24, item.name, {
-              fontSize: "13px",
+            .text(370, y - 21, item.name, {
+              fontSize: "12px",
               color: rarityColor,
               fontStyle: "bold",
             })
@@ -8621,21 +8652,31 @@ class VillageScene extends Phaser.Scene {
 
         addObject(
           this.add
-            .text(370, y - 4, `${item.type}  •  ${String(item.rarity).toUpperCase()}`, {
-              fontSize: "9px",
-              color: "#91AAC8",
-              fontStyle: "bold",
-            })
+            .text(
+              370,
+              y - 3,
+              `${item.type}  •  ${String(item.rarity).toUpperCase()}`,
+              {
+                fontSize: "8px",
+                color: "#91AAC8",
+                fontStyle: "bold",
+              }
+            )
             .setDepth(depth + 3)
         );
 
         addObject(
           this.add
-            .text(370, y + 15, item.description || "Tidak ada deskripsi.", {
-              fontSize: "9px",
-              color: "#D6E3F4",
-              wordWrap: { width: 205 },
-            })
+            .text(
+              370,
+              y + 13,
+              item.description || "Tidak ada deskripsi.",
+              {
+                fontSize: "8px",
+                color: "#D6E3F4",
+                wordWrap: { width: 200 },
+              }
+            )
             .setDepth(depth + 3)
         );
 
@@ -8645,19 +8686,23 @@ class VillageScene extends Phaser.Scene {
               675,
               y,
               82,
-              30,
+              28,
               equipped ? 0x8b6b13 : 0x1d5f91,
               1
             )
             .setDepth(depth + 3)
-            .setStrokeStyle(1, equipped ? 0xffe58a : 0x63a7d8, 0.9)
+            .setStrokeStyle(
+              1,
+              equipped ? 0xffe58a : 0x63a7d8,
+              0.9
+            )
             .setInteractive({ useHandCursor: true })
         );
 
         const equipText = addObject(
           this.add
             .text(675, y, equipped ? "UNEQUIP" : "EQUIP", {
-              fontSize: "9px",
+              fontSize: "8px",
               color: "#FFFFFF",
               fontStyle: "bold",
             })
@@ -8666,12 +8711,16 @@ class VillageScene extends Phaser.Scene {
         );
 
         equipButton.on("pointerover", () => {
-          equipButton.setFillStyle(equipped ? 0xa47c17 : 0x2b78ad);
+          equipButton.setFillStyle(
+            equipped ? 0xa47c17 : 0x2b78ad
+          );
           card.setFillStyle(0x183251, 1);
         });
 
         equipButton.on("pointerout", () => {
-          equipButton.setFillStyle(equipped ? 0x8b6b13 : 0x1d5f91);
+          equipButton.setFillStyle(
+            equipped ? 0x8b6b13 : 0x1d5f91
+          );
           card.setFillStyle(0x132844, 1);
         });
 
@@ -8679,13 +8728,103 @@ class VillageScene extends Phaser.Scene {
           if (equipped) {
             this.unequipItem(item);
           } else {
-            this.equipItem(index);
+            this.equipItem(actualIndex);
           }
         });
 
-        // Agar text tidak menyerap klik tombol.
         equipText.disableInteractive?.();
       });
+
+      // Pagination hanya muncul ketika item lebih dari 4.
+      if (inventoryTotalPages > 1) {
+        const navY = 480;
+        const canPrev = this.inventoryPage > 0;
+        const canNext = this.inventoryPage < inventoryTotalPages - 1;
+
+        const prevButton = addObject(
+          this.add
+            .rectangle(
+              410,
+              navY,
+              74,
+              26,
+              canPrev ? 0x1d5f91 : 0x132033,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, canPrev ? 0x63a7d8 : 0x31577d, 0.8)
+        );
+
+        addObject(
+          this.add
+            .text(410, navY, "◀ PREV", {
+              fontSize: "8px",
+              color: canPrev ? "#FFFFFF" : "#657A96",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        addObject(
+          this.add
+            .text(
+              515,
+              navY,
+              `${this.inventoryPage + 1} / ${inventoryTotalPages}`,
+              {
+                fontSize: "10px",
+                color: "#FFE58A",
+                fontStyle: "bold",
+              }
+            )
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        const nextButton = addObject(
+          this.add
+            .rectangle(
+              620,
+              navY,
+              74,
+              26,
+              canNext ? 0x1d5f91 : 0x132033,
+              1
+            )
+            .setDepth(depth + 3)
+            .setStrokeStyle(1, canNext ? 0x63a7d8 : 0x31577d, 0.8)
+        );
+
+        addObject(
+          this.add
+            .text(620, navY, "NEXT ▶", {
+              fontSize: "8px",
+              color: canNext ? "#FFFFFF" : "#657A96",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5)
+            .setDepth(depth + 4)
+        );
+
+        if (canPrev) {
+          prevButton.setInteractive({ useHandCursor: true });
+          prevButton.on("pointerdown", () => {
+            this.inventoryPage -= 1;
+            this.closeInventory();
+            this.showInventory();
+          });
+        }
+
+        if (canNext) {
+          nextButton.setInteractive({ useHandCursor: true });
+          nextButton.on("pointerdown", () => {
+            this.inventoryPage += 1;
+            this.closeInventory();
+            this.showInventory();
+          });
+        }
+      }
     }
 
     // --------------------------------------------------
